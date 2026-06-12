@@ -391,7 +391,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.6.8;
-				PRODUCT_BUNDLE_IDENTIFIER = gg.archipelago.ArchipelagoClient;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.chaoticly.ArchipelagoClient;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
@@ -413,7 +413,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.6.8;
-				PRODUCT_BUNDLE_IDENTIFIER = gg.archipelago.ArchipelagoClient;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.chaoticly.ArchipelagoClient;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
