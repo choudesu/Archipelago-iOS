@@ -69,7 +69,7 @@ enum APCodec {
             return NSNull()
         }
 
-        switch value { {
+        switch value {
         case let item as NetworkItem:
             return taggedDict([
                 "class": "NetworkItem",
