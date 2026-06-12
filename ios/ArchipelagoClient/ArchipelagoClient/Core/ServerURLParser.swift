@@ -41,4 +41,20 @@ enum ServerURLParser {
             } ?? address
         )
     }
+
+    /// Returns a copy of the parsed URL using `wss` instead of `ws`.
+    static func upgradeToSecure(_ parsed: ParsedServerURL) -> ParsedServerURL? {
+        guard var components = URLComponents(url: parsed.websocketURL, resolvingAgainstBaseURL: false) else {
+            return nil
+        }
+        guard components.scheme == "ws" else { return parsed }
+        components.scheme = "wss"
+        guard let url = components.url else { return nil }
+        return ParsedServerURL(
+            websocketURL: url,
+            username: parsed.username,
+            password: parsed.password,
+            displayAddress: parsed.displayAddress
+        )
+    }
 }

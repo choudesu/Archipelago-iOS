@@ -1,73 +1,130 @@
 import Foundation
+import Starscream
 
-final class APWebSocketSession: NSObject, URLSessionDelegate, URLSessionWebSocketDelegate {
+enum APWebSocketError: Error, LocalizedError {
+    case notConnected
+    case connectionFailed(String)
+    case closed
+
+    var errorDescription: String? {
+        switch self {
+        case .notConnected: return "WebSocket is not connected"
+        case .connectionFailed(let reason): return reason
+        case .closed: return "WebSocket connection closed"
+        }
+    }
+}
+
+final class APWebSocketSession: WebSocketDelegate {
     private let url: URL
-    private var task: URLSessionWebSocketTask?
-    private lazy var session: URLSession = {
-        URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-    }()
+    private var socket: WebSocket?
+    private var openContinuation: CheckedContinuation<Void, Error>?
+    private let queue = DispatchQueue(label: "gg.archipelago.websocket", qos: .userInitiated)
 
-    var isOpen = false
+    private(set) var isOpen = false
     var onMessage: ((String) -> Void)?
     var onClose: ((Error?) -> Void)?
 
     init(url: URL) {
         self.url = url
-        super.init()
     }
 
     func open() async throws {
+        guard socket == nil else {
+            throw APWebSocketError.connectionFailed("Already connected or connecting")
+        }
+
         var request = URLRequest(url: url)
         request.timeoutInterval = 30
-        task = session.webSocketTask(with: request)
-        task?.resume()
-        isOpen = true
-        receiveNext()
+        request.setValue("Archipelago-iOS", forHTTPHeaderField: "User-Agent")
+
+        let compression = WSCompression()
+        let webSocket = WebSocket(request: request, compressionHandler: compression)
+        webSocket.callbackQueue = queue
+        webSocket.delegate = self
+        socket = webSocket
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            openContinuation = continuation
+            webSocket.connect()
+        }
     }
 
     func send(_ text: String) async throws {
-        guard let task else { return }
-        try await task.send(.string(text))
-    }
+        guard let socket, isOpen else {
+            throw APWebSocketError.notConnected
+        }
 
-    func close() async {
-        isOpen = false
-        task?.cancel(with: .goingAway, reason: nil)
-        task = nil
-    }
-
-    private func receiveNext() {
-        task?.receive { [weak self] result in
-            guard let self else { return }
-            switch result {
-            case .success(let message):
-                switch message {
-                case .string(let text):
-                    self.onMessage?(text)
-                case .data(let data):
-                    if let text = String(data: data, encoding: .utf8) {
-                        self.onMessage?(text)
-                    }
-                @unknown default:
-                    break
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            queue.async {
+                socket.write(string: text) {
+                    continuation.resume()
                 }
-                if self.isOpen {
-                    self.receiveNext()
-                }
-            case .failure(let error):
-                self.isOpen = false
-                self.onClose?(error)
             }
         }
     }
 
-    func urlSession(
-        _ session: URLSession,
-        webSocketTask: URLSessionWebSocketTask,
-        didCloseWith closeCode: URLSessionWebSocketTask.CloseCode,
-        reason: Data?
-    ) {
+    func close() async {
         isOpen = false
-        onClose?(nil)
+        socket?.disconnect()
+        socket = nil
+        openContinuation?.resume(throwing: APWebSocketError.closed)
+        openContinuation = nil
+    }
+
+    // MARK: - WebSocketDelegate
+
+    func didReceive(event: WebSocketEvent, client: WebSocketClient) {
+        switch event {
+        case .connected:
+            isOpen = true
+            openContinuation?.resume()
+            openContinuation = nil
+
+        case .disconnected(let reason, let code):
+            let wasOpen = isOpen
+            isOpen = false
+            socket = nil
+            if let openContinuation {
+                self.openContinuation = nil
+                let message = "Disconnected during connect: \(reason) (code \(code))"
+                openContinuation.resume(throwing: APWebSocketError.connectionFailed(message))
+            } else if wasOpen {
+                onClose?(APWebSocketError.connectionFailed("\(reason) (code \(code))"))
+            }
+
+        case .text(let string):
+            onMessage?(string)
+
+        case .binary(let data):
+            if let string = String(data: data, encoding: .utf8) {
+                onMessage?(string)
+            }
+
+        case .error(let error):
+            isOpen = false
+            if let openContinuation {
+                self.openContinuation = nil
+                openContinuation.resume(throwing: error ?? APWebSocketError.connectionFailed("Unknown WebSocket error"))
+            } else {
+                onClose?(error)
+            }
+
+        case .cancelled:
+            isOpen = false
+            if let openContinuation {
+                self.openContinuation = nil
+                openContinuation.resume(throwing: APWebSocketError.closed)
+            } else {
+                onClose?(APWebSocketError.closed)
+            }
+
+        case .peerClosed:
+            isOpen = false
+            onClose?(nil)
+
+        case .ping, .pong, .viabilityChanged, .reconnectSuggested:
+            break
+        }
     }
 }

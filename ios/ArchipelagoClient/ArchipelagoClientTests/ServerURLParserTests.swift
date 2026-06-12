@@ -21,4 +21,12 @@ final class ServerURLParserTests: XCTestCase {
         XCTAssertEqual(parsed.websocketURL.scheme, "wss")
         XCTAssertEqual(parsed.websocketURL.port, 38281)
     }
+
+    func testUpgradeToSecure() throws {
+        let parsed = try ServerURLParser.parse("archipelago.gg:63399")
+        let secure = ServerURLParser.upgradeToSecure(parsed)
+        XCTAssertEqual(secure?.websocketURL.scheme, "wss")
+        XCTAssertEqual(secure?.websocketURL.host, "archipelago.gg")
+        XCTAssertEqual(secure?.websocketURL.port, 63399)
+    }
 }

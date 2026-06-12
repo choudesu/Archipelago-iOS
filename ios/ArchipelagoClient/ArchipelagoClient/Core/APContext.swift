@@ -380,20 +380,18 @@ final class APContext: ObservableObject {
             serverAddress = parsed.displayAddress
             Persistence.lastServerAddress = parsed.displayAddress
 
-            let session = APWebSocketSession(url: parsed.websocketURL)
-            webSocket = session
-            session.onMessage = { [weak self] text in
-                Task { @MainActor in
-                    await self?.handleIncoming(text)
-                }
-            }
-            session.onClose = { [weak self] error in
-                Task { @MainActor in
-                    await self?.handleSocketClosed(error: error)
+            do {
+                try await openWebSocket(parsed: parsed)
+            } catch {
+                if parsed.websocketURL.scheme == "ws",
+                   let secure = ServerURLParser.upgradeToSecure(parsed) {
+                    appendLog("Retrying with secure WebSocket (wss://)...")
+                    try await openWebSocket(parsed: secure)
+                } else {
+                    throw error
                 }
             }
 
-            try await session.open()
             connectionState = .connected
             currentReconnectDelay = startingReconnectDelay
             delegate?.contextDidUpdateConnectionState(self)
@@ -402,6 +400,23 @@ final class APContext: ObservableObject {
             handleConnectionLoss("Failed to connect to the multiworld server: \(error.localizedDescription)")
             scheduleReconnect()
         }
+    }
+
+    private func openWebSocket(parsed: ParsedServerURL) async throws {
+        let session = APWebSocketSession(url: parsed.websocketURL)
+        webSocket = session
+        session.onMessage = { [weak self] text in
+            Task { @MainActor in
+                await self?.handleIncoming(text)
+            }
+        }
+        session.onClose = { [weak self] error in
+            Task { @MainActor in
+                await self?.handleSocketClosed(error: error)
+            }
+        }
+        try await session.open()
+        appendLog("Connected to \(parsed.websocketURL.absoluteString)")
     }
 
     private func disconnectAsync(allowAutoreconnect: Bool = false) async {

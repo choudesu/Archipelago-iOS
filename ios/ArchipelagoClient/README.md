@@ -23,6 +23,8 @@ Enter a server address in the connect bar, for example:
 - `localhost:38281` (local server)
 - `archipelago://SlotName:password@host:38281`
 
+The client uses **Starscream** with `permessage-deflate` compression, which Archipelago servers require. If a plain `ws://` connection fails, the app automatically retries with `wss://`.
+
 After connecting, enter your slot name and password when prompted.
 
 ## Features
