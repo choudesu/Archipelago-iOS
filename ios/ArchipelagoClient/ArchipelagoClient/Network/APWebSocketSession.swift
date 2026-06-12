@@ -41,7 +41,7 @@ final class APWebSocketSession: WebSocketDelegate {
         request.timeoutInterval = timeout
         request.setValue("Archipelago-iOS", forHTTPHeaderField: "User-Agent")
 
-        let compression = WSCompression()
+        let compression = APWSCompression()
         let webSocket = WebSocket(request: request, compressionHandler: compression)
         webSocket.callbackQueue = callbackQueue
         webSocket.delegate = self
@@ -105,9 +105,9 @@ final class APWebSocketSession: WebSocketDelegate {
             isOpen = false
             socket = nil
             if openContinuation != nil {
-                finishOpen(with: APWebSocketError.connectionFailed("Disconnected during connect: \(reason) (code \(code))"))
+                finishOpen(with: APWebSocketError.connectionFailed(Self.describeDisconnect(reason: reason, code: code)))
             } else if wasOpen {
-                dispatchClose(APWebSocketError.connectionFailed("\(reason) (code \(code))"))
+                dispatchClose(APWebSocketError.connectionFailed(Self.describeDisconnect(reason: reason, code: code)))
             }
 
         case .text(let string):
@@ -120,10 +120,11 @@ final class APWebSocketSession: WebSocketDelegate {
 
         case .error(let error):
             isOpen = false
+            let described = error.map { Self.describeError($0) } ?? "Unknown WebSocket error"
             if openContinuation != nil {
-                finishOpen(with: error ?? APWebSocketError.connectionFailed("Unknown WebSocket error"))
+                finishOpen(with: APWebSocketError.connectionFailed(described))
             } else {
-                dispatchClose(error)
+                dispatchClose(error ?? APWebSocketError.connectionFailed(described))
             }
 
         case .cancelled:
@@ -167,6 +168,29 @@ final class APWebSocketSession: WebSocketDelegate {
                 onMessage(text)
             }
         }
+    }
+
+    private static func describeDisconnect(reason: String, code: UInt16) -> String {
+        let trimmed = reason.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            switch code {
+            case 1002:
+                return "WebSocket protocol error — message decompression may have failed (code 1002)"
+            default:
+                return "Connection closed (code \(code))"
+            }
+        }
+        return "\(trimmed) (code \(code))"
+    }
+
+    private static func describeError(_ error: Error) -> String {
+        if let wsError = error as? WSError {
+            if wsError.message.isEmpty {
+                return "WebSocket error (code \(wsError.code))"
+            }
+            return "\(wsError.message) (code \(wsError.code))"
+        }
+        return error.localizedDescription
     }
 
     private func dispatchClose(_ error: Error?) {

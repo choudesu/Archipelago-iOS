@@ -498,11 +498,17 @@ final class APContext: ObservableObject {
         delegate?.contextDidUpdateConnectionState(self)
     }
 
+    private static let noisyIncomingCommands: Set<String> = [
+        "PrintJSON", "RoomUpdate", "ReceivedItems", "Bounced", "SetReply", "Retrieved"
+    ]
+
     private func handleIncoming(_ text: String) async {
         do {
             let messages = try APCodec.decode(text)
             for message in messages {
-                if let cmd = message["cmd"] as? String, cmd != "DataPackage" {
+                if let cmd = message["cmd"] as? String,
+                   cmd != "DataPackage",
+                   !Self.noisyIncomingCommands.contains(cmd) {
                     appendLog("← \(cmd)")
                 }
                 do {
@@ -538,9 +544,12 @@ final class APContext: ObservableObject {
             auth = savedAuth
             appendLog("Connection closed before joining as \"\(savedAuth)\". Verify the slot name matches your YAML, then tap Connect to try again.")
         } else if let error {
-            let hint = wasJoined && !serverAddress.isEmpty ? " Reconnecting..." : ""
+            let willReconnect = !disconnectedIntentionally && !serverAddress.isEmpty && wasJoined
+            let hint = willReconnect ? " Reconnecting..." : ""
             appendLog("Lost connection to the multiworld server: \(error.localizedDescription)\(hint)")
-            delegate?.contextDidReceiveError(self, title: "Connection Lost", message: error.localizedDescription)
+            if !willReconnect {
+                delegate?.contextDidReceiveError(self, title: "Connection Lost", message: error.localizedDescription)
+            }
         } else {
             appendLog("Disconnected from multiworld server.")
         }

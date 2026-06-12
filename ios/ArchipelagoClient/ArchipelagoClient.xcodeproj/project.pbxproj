@@ -30,6 +30,7 @@
 		AA0000010000000000000020 /* APCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000020 /* APCodecTests.swift */; };
 		AA0000010000000000000021 /* ServerURLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000021 /* ServerURLParserTests.swift */; };
 		AA0000010000000000000022 /* DataPackageChecksumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000022 /* DataPackageChecksumTests.swift */; };
+		AA0000010000000000000028 /* APWSCompression.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000028 /* APWSCompression.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +58,7 @@
 		AA0001010000000000000020 /* APCodecTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APCodecTests.swift; sourceTree = "<group>"; };
 		AA0001010000000000000021 /* ServerURLParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerURLParserTests.swift; sourceTree = "<group>"; };
 		AA0001010000000000000022 /* DataPackageChecksumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataPackageChecksumTests.swift; sourceTree = "<group>"; };
+		AA0001010000000000000028 /* APWSCompression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APWSCompression.swift; sourceTree = "<group>"; };
 		AA0002010000000000000001 /* ArchipelagoClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArchipelagoClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0002010000000000000002 /* ArchipelagoClientTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArchipelagoClientTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -149,6 +151,7 @@
 				AA0001010000000000000006 /* APCodec.swift */,
 				AA0001010000000000000007 /* APServerMessageHandler.swift */,
 				AA0001010000000000000008 /* APWebSocketSession.swift */,
+				AA0001010000000000000028 /* APWSCompression.swift */,
 			);
 			path = Network;
 			sourceTree = "<group>";
@@ -305,6 +308,7 @@
 				AA0000010000000000000006 /* APCodec.swift in Sources */,
 				AA0000010000000000000007 /* APServerMessageHandler.swift in Sources */,
 				AA0000010000000000000008 /* APWebSocketSession.swift in Sources */,
+				AA0000010000000000000028 /* APWSCompression.swift in Sources */,
 				AA0000010000000000000009 /* APModels.swift in Sources */,
 				AA000001000000000000000A /* APClientCommands.swift in Sources */,
 				AA000001000000000000000B /* DataPackageCache.swift in Sources */,
