@@ -49,4 +49,17 @@ final class APCodecTests: XCTestCase {
         let encoded = try APCodec.encode([payload])
         XCTAssertTrue(encoded.contains("\"password\":null"))
     }
+
+    func testEncodeConnectVersionAsVersionObject() throws {
+        let payload: [String: Any] = [
+            "cmd": "Connect",
+            "version": APVersion.clientVersion
+        ]
+        let encoded = try APCodec.encode([payload])
+        XCTAssertTrue(encoded.contains("\"class\":\"Version\""))
+        XCTAssertTrue(encoded.contains("\"major\":0"))
+        XCTAssertTrue(encoded.contains("\"minor\":6"))
+        XCTAssertTrue(encoded.contains("\"build\":8"))
+        XCTAssertFalse(encoded.contains("\"version\":[0,6,8]"))
+    }
 }

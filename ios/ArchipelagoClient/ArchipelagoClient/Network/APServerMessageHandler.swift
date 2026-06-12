@@ -105,6 +105,7 @@ final class APServerMessageHandler {
     }
 
     private func handleConnectionRefused(_ args: [String: Any]) async {
+        context.markConnectionRefusedHandled()
         let errors = args["errors"] as? [String] ?? []
         context.appendLog("Connection refused: \(errors.isEmpty ? "unknown reason" : errors.joined(separator: ", "))")
 
@@ -192,6 +193,7 @@ final class APServerMessageHandler {
         }
 
         var messages: [[String: Any]] = []
+        context.storedDataNotificationKeys.insert("_read_race_mode")
         if !context.locationsChecked.isEmpty {
             messages.append(["cmd": "LocationChecks", "locations": Array(context.locationsChecked).sorted()])
         }
@@ -218,6 +220,7 @@ final class APServerMessageHandler {
         }
         context.serverLocations = context.missingLocations.union(context.checkedLocations)
 
+        context.markConnectSucceeded()
         context.connectionState = .connected
         context.delegate?.contextDidUpdateConnectionState(context)
         context.delegate?.contextDidUpdateProgress(context)

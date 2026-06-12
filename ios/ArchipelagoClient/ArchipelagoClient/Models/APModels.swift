@@ -71,6 +71,11 @@ struct NetworkSlot: Codable, Equatable, Sendable {
     var type: Int
     var groupMembers: [Int]
 
+    enum CodingKeys: String, CodingKey {
+        case name, game, type
+        case groupMembers = "group_members"
+    }
+
     init(name: String, game: String, type: Int, groupMembers: [Int] = []) {
         self.name = name
         self.game = game

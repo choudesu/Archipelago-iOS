@@ -69,6 +69,8 @@ final class APContext: ObservableObject {
     private var keepAliveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
     private var connectionGeneration = 0
+    private var awaitingConnectResponse = false
+    private var connectionRefusedHandled = false
     private var disconnectedIntentionally = false
     private var currentReconnectDelay = 5
     private let startingReconnectDelay = 5
@@ -113,7 +115,10 @@ final class APContext: ObservableObject {
     }
 
     func sendMessages(_ messages: [[String: Any]]) async {
-        guard let webSocket, webSocket.isOpen else { return }
+        guard let webSocket, webSocket.isOpen else {
+            appendLog("Cannot send — WebSocket is not connected.")
+            return
+        }
         do {
             let encoded = try APCodec.encode(messages)
             try await webSocket.send(encoded)
@@ -174,10 +179,19 @@ final class APContext: ObservableObject {
         delegate?.contextDidUpdateHints(self)
     }
 
+    func markConnectionRefusedHandled() {
+        connectionRefusedHandled = true
+        awaitingConnectResponse = false
+    }
+
+    func markConnectSucceeded() {
+        awaitingConnectResponse = false
+        connectionRefusedHandled = false
+    }
+
     // MARK: - Internal handlers used by APServerMessageHandler
 
     func resetServerState() {
-        auth = nil
         slot = nil
         team = nil
         itemsReceived = []
@@ -276,20 +290,19 @@ final class APContext: ObservableObject {
             return
         }
 
-        let connectVersion: APVersion
-        if serverVersion.major > 0 || serverVersion.minor > 0 || serverVersion.build > 0 {
-            connectVersion = serverVersion
-        } else {
-            connectVersion = APVersion.clientVersion
-        }
+        // Match Python CommonClient: always send the client protocol version as a Version object.
+        let connectVersion = APVersion.clientVersion
 
         appendLog("Connecting as \"\(name)\" (protocol \(connectVersion.simpleString))...")
+
+        awaitingConnectResponse = true
+        connectionRefusedHandled = false
 
         var payload: [String: Any] = [
             "cmd": "Connect",
             "password": password ?? NSNull(),
             "name": name,
-            "version": connectVersion.tuple,
+            "version": connectVersion,
             "tags": Array(tags).sorted(),
             "items_handling": itemsHandling,
             "uuid": Persistence.clientUUID,
@@ -300,7 +313,6 @@ final class APContext: ObservableObject {
             payload[key] = value
         }
         await sendMessages([payload])
-        await sendMessages([["cmd": "Get", "keys": ["_read_race_mode"]]])
     }
 
     func onPrintJSON(_ args: [String: Any]) {
@@ -452,6 +464,8 @@ final class APContext: ObservableObject {
         }
         session.onClose = { [weak self] error in
             Task { @MainActor in
+                // Allow any in-flight server messages (e.g. ConnectionRefused) to process first.
+                try? await Task.sleep(nanoseconds: 300_000_000)
                 guard let self, self.connectionGeneration == generation else { return }
                 await self.handleSocketClosed(error: error)
             }
@@ -488,32 +502,50 @@ final class APContext: ObservableObject {
         do {
             let messages = try APCodec.decode(text)
             for message in messages {
-                await messageHandler?.handle(message)
+                if let cmd = message["cmd"] as? String, cmd != "DataPackage" {
+                    appendLog("← \(cmd)")
+                }
+                do {
+                    await messageHandler?.handle(message)
+                } catch {
+                    appendLog("Error handling server message: \(error.localizedDescription)")
+                }
             }
         } catch {
-            appendLog("Failed to decode server message: \(error.localizedDescription)")
+            appendLog("Failed to decode server message (\(text.prefix(120))): \(error.localizedDescription)")
         }
     }
 
     private func handleSocketClosed(error: Error?) async {
-        guard connectionState != .disconnected || webSocket != nil else { return }
+        if connectionRefusedHandled {
+            connectionRefusedHandled = false
+            awaitingConnectResponse = false
+            return
+        }
+
+        let wasJoined = slot != nil
+        let savedAuth = auth
 
         keepAliveTask?.cancel()
         keepAliveTask = nil
         webSocket = nil
         resetServerState()
+        awaitingConnectResponse = false
         connectionState = .disconnected
         delegate?.contextDidUpdateConnectionState(self)
 
-        let hint = serverAddress.isEmpty ? "" : " Reconnect to try again."
-        if let error {
+        if !wasJoined, let savedAuth, !savedAuth.isEmpty {
+            auth = savedAuth
+            appendLog("Connection closed before joining as \"\(savedAuth)\". Verify the slot name matches your YAML, then tap Connect to try again.")
+        } else if let error {
+            let hint = wasJoined && !serverAddress.isEmpty ? " Reconnecting..." : ""
             appendLog("Lost connection to the multiworld server: \(error.localizedDescription)\(hint)")
             delegate?.contextDidReceiveError(self, title: "Connection Lost", message: error.localizedDescription)
         } else {
-            appendLog("Disconnected from multiworld server.\(hint)")
+            appendLog("Disconnected from multiworld server.")
         }
 
-        if !disconnectedIntentionally, !serverAddress.isEmpty {
+        if !disconnectedIntentionally, !serverAddress.isEmpty, wasJoined {
             scheduleReconnect()
         }
     }
