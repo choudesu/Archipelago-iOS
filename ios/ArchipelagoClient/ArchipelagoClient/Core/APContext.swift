@@ -244,7 +244,8 @@ final class APContext: ObservableObject {
     func serverAuth(passwordRequested: Bool) async {
         if passwordRequested, password == nil {
             let entered = await requestUserInput(prompt: "Enter the password required to join this game:")
-            password = entered.isEmpty ? nil : entered
+            password = entered.trimmingCharacters(in: .whitespacesAndNewlines)
+            password = password?.isEmpty == true ? nil : password
             await sendConnect()
             return
         }
@@ -253,25 +254,46 @@ final class APContext: ObservableObject {
 
     func getUsername() async {
         if auth == nil {
-            auth = username
+            auth = username?.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if auth == nil {
             let entered = await requestUserInput(prompt: "Enter slot name:")
-            auth = entered
+            auth = entered.trimmingCharacters(in: .whitespacesAndNewlines)
         }
+        guard let name = auth, !name.isEmpty else {
+            appendLog("Slot name cannot be empty.")
+            auth = nil
+            await getUsername()
+            return
+        }
+        auth = name
         await sendConnect()
     }
 
     func sendConnect(extra: [String: Any] = [:]) async {
+        guard let name = auth, !name.isEmpty else {
+            appendLog("Cannot connect without a slot name.")
+            return
+        }
+
+        let connectVersion: APVersion
+        if serverVersion.major > 0 || serverVersion.minor > 0 || serverVersion.build > 0 {
+            connectVersion = serverVersion
+        } else {
+            connectVersion = APVersion.clientVersion
+        }
+
+        appendLog("Connecting as \"\(name)\" (protocol \(connectVersion.simpleString))...")
+
         var payload: [String: Any] = [
             "cmd": "Connect",
-            "password": password as Any,
-            "name": auth as Any,
-            "version": APVersion.clientVersion.tuple,
+            "password": password ?? NSNull(),
+            "name": name,
+            "version": connectVersion.tuple,
             "tags": Array(tags).sorted(),
             "items_handling": itemsHandling,
             "uuid": Persistence.clientUUID,
-            "game": game,
+            "game": "",
             "slot_data": wantSlotData
         ]
         for (key, value) in extra {
@@ -335,9 +357,10 @@ final class APContext: ObservableObject {
 
     func submitUserInput(_ text: String) {
         awaitingInputPrompt = nil
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if let continuation = inputContinuation {
             inputContinuation = nil
-            continuation.resume(returning: text)
+            continuation.resume(returning: trimmed)
         }
     }
 

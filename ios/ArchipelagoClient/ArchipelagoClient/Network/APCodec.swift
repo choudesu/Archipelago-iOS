@@ -61,7 +61,15 @@ enum APCodec {
     }
 
     private static func convertForEncoding(_ value: Any) -> Any {
-        switch value {
+        let mirror = Mirror(reflecting: value)
+        if mirror.displayStyle == .optional {
+            if let child = mirror.children.first {
+                return convertForEncoding(child.value)
+            }
+            return NSNull()
+        }
+
+        switch value { {
         case let item as NetworkItem:
             return taggedDict([
                 "class": "NetworkItem",

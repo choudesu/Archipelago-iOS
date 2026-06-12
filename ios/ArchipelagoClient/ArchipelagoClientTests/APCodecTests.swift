@@ -28,14 +28,25 @@ final class APCodecTests: XCTestCase {
         XCTAssertEqual(parsed, APVersion(major: 0, minor: 6, build: 8))
     }
 
-    func testRoundTripVersionInConnect() throws {
+    func testEncodeNullPasswordInConnect() throws {
         let payload: [String: Any] = [
             "cmd": "Connect",
-            "version": APVersion.clientVersion.tuple,
-            "tags": ["AP", "TextOnly"]
+            "password": NSNull(),
+            "name": "Player1",
+            "game": ""
         ]
         let encoded = try APCodec.encode([payload])
-        let decoded = try APCodec.decode(encoded)
-        XCTAssertEqual(decoded.first?["cmd"] as? String, "Connect")
+        XCTAssertTrue(encoded.contains("\"password\":null"))
+        XCTAssertTrue(encoded.contains("\"name\":\"Player1\""))
+    }
+
+    func testEncodeOptionalNilAsNull() throws {
+        let password: String? = nil
+        let payload: [String: Any] = [
+            "cmd": "Connect",
+            "password": password as Any
+        ]
+        let encoded = try APCodec.encode([payload])
+        XCTAssertTrue(encoded.contains("\"password\":null"))
     }
 }

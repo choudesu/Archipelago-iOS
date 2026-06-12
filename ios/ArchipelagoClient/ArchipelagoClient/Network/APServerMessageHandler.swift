@@ -106,18 +106,26 @@ final class APServerMessageHandler {
 
     private func handleConnectionRefused(_ args: [String: Any]) async {
         let errors = args["errors"] as? [String] ?? []
+        context.appendLog("Connection refused: \(errors.isEmpty ? "unknown reason" : errors.joined(separator: ", "))")
+
         if errors.contains("InvalidSlot") {
-            context.disconnect()
-            context.delegate?.contextDidReceiveError(context, title: "Invalid Slot", message: "Please verify you connected to the correct world.")
+            let attempted = context.auth ?? "(empty)"
+            context.appendLog("Invalid slot name \"\(attempted)\". Enter the exact slot name from your YAML.")
+            context.auth = nil
+            context.delegate?.contextDidReceiveError(
+                context,
+                title: "Invalid Slot",
+                message: "Slot \"\(attempted)\" was not found. Check spelling and try again."
+            )
+            await context.getUsername()
         } else if errors.contains("InvalidGame") {
-            context.disconnect()
-            context.delegate?.contextDidReceiveError(context, title: "Invalid Game", message: "Please verify you connected with the right game.")
+            context.appendLog("Invalid game for this slot. Retrying as text client...")
+            await context.sendConnect(extra: ["game": ""])
         } else if errors.contains("IncompatibleVersion") {
-            context.disconnect()
             context.delegate?.contextDidReceiveError(
                 context,
                 title: "Incompatible Version",
-                message: "Server reported your client version as incompatible. Please update."
+                message: "Server rejected protocol version \(context.serverVersion.simpleString). The server may require an exact client version match."
             )
         } else if errors.contains("InvalidItemsHandling") {
             context.delegate?.contextDidReceiveError(
@@ -139,7 +147,7 @@ final class APServerMessageHandler {
             context.delegate?.contextDidReceiveError(
                 context,
                 title: "Connection Refused",
-                message: "Unknown connection errors: \(errors.joined(separator: ", "))"
+                message: errors.joined(separator: ", ")
             )
         }
     }
@@ -213,7 +221,7 @@ final class APServerMessageHandler {
         context.connectionState = .connected
         context.delegate?.contextDidUpdateConnectionState(context)
         context.delegate?.contextDidUpdateProgress(context)
-        context.appendLog("Connected to slot \(context.slot ?? 0) on team \((context.team ?? 0) + 1)")
+        context.appendLog("Joined slot \(context.slot ?? 0) on team \((context.team ?? 0) + 1) as \(context.auth ?? "player")")
     }
 
     private func handleReceivedItems(_ args: [String: Any]) async {
