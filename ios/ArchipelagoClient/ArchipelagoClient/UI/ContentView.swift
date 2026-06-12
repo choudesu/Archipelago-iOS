@@ -9,7 +9,7 @@ struct ContentView: View {
                 ConnectionBarView(viewModel: viewModel)
 
                 TabView(selection: $viewModel.selectedTab) {
-                    ChatLogView(context: viewModel.context)
+                    ChatLogView(viewModel: viewModel)
                         .tabItem { Label("Log", systemImage: "text.bubble") }
                         .tag(0)
 

@@ -1,13 +1,20 @@
 import SwiftUI
 
 struct ChatLogView: View {
-    @ObservedObject var context: APContext
+    @ObservedObject var viewModel: AppViewModel
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 6) {
-                    ForEach(context.chatLog) { entry in
+                    if viewModel.context.chatLog.isEmpty {
+                        Text("Connection and chat messages appear here.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
+                    ForEach(viewModel.context.chatLog) { entry in
                         Text(renderedText(for: entry))
                             .font(.system(.body, design: .monospaced))
                             .foregroundStyle(entry.isCommandEcho ? .orange : .primary)
@@ -17,8 +24,8 @@ struct ChatLogView: View {
                 }
                 .padding()
             }
-            .onChange(of: context.chatLog.count) { _, _ in
-                if let last = context.chatLog.last {
+            .onChange(of: viewModel.context.chatLog.count) { _, _ in
+                if let last = viewModel.context.chatLog.last {
                     withAnimation {
                         proxy.scrollTo(last.id, anchor: .bottom)
                     }
@@ -31,6 +38,7 @@ struct ChatLogView: View {
         if entry.attributedParts.isEmpty {
             return entry.text
         }
+        let context = viewModel.context
         let renderer = JSONMessageRenderer(
             playerNames: context.playerNames,
             nameLookup: context.nameLookup,

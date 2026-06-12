@@ -29,4 +29,17 @@ final class ServerURLParserTests: XCTestCase {
         XCTAssertEqual(secure?.websocketURL.host, "archipelago.gg")
         XCTAssertEqual(secure?.websocketURL.port, 63399)
     }
+
+    func testRemoteHostPrefersSecureFirst() throws {
+        let parsed = try ServerURLParser.parse("archipelago.gg:63399")
+        let candidates = ServerURLParser.connectionCandidates(parsed)
+        XCTAssertEqual(candidates.first?.websocketURL.scheme, "wss")
+        XCTAssertTrue(candidates.contains { $0.websocketURL.scheme == "ws" })
+    }
+
+    func testLocalHostPrefersInsecureFirst() throws {
+        let parsed = try ServerURLParser.parse("localhost:38281")
+        let candidates = ServerURLParser.connectionCandidates(parsed)
+        XCTAssertEqual(candidates.first?.websocketURL.scheme, "ws")
+    }
 }

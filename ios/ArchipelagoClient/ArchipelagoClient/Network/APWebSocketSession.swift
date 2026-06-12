@@ -5,12 +5,14 @@ enum APWebSocketError: Error, LocalizedError {
     case notConnected
     case connectionFailed(String)
     case closed
+    case timedOut
 
     var errorDescription: String? {
         switch self {
         case .notConnected: return "WebSocket is not connected"
         case .connectionFailed(let reason): return reason
         case .closed: return "WebSocket connection closed"
+        case .timedOut: return "WebSocket connection timed out"
         }
     }
 }
@@ -19,7 +21,8 @@ final class APWebSocketSession: WebSocketDelegate {
     private let url: URL
     private var socket: WebSocket?
     private var openContinuation: CheckedContinuation<Void, Error>?
-    private let queue = DispatchQueue(label: "gg.archipelago.websocket", qos: .userInitiated)
+    private var openTimeoutTask: Task<Void, Never>?
+    private let callbackQueue = DispatchQueue(label: "gg.archipelago.websocket", qos: .userInitiated)
 
     private(set) var isOpen = false
     var onMessage: ((String) -> Void)?
@@ -29,23 +32,32 @@ final class APWebSocketSession: WebSocketDelegate {
         self.url = url
     }
 
-    func open() async throws {
+    func open(timeout: TimeInterval = 30) async throws {
         guard socket == nil else {
             throw APWebSocketError.connectionFailed("Already connected or connecting")
         }
 
         var request = URLRequest(url: url)
-        request.timeoutInterval = 30
+        request.timeoutInterval = timeout
         request.setValue("Archipelago-iOS", forHTTPHeaderField: "User-Agent")
 
         let compression = WSCompression()
         let webSocket = WebSocket(request: request, compressionHandler: compression)
-        webSocket.callbackQueue = queue
+        webSocket.callbackQueue = callbackQueue
         webSocket.delegate = self
         socket = webSocket
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             openContinuation = continuation
+            openTimeoutTask = Task {
+                try? await Task.sleep(nanoseconds: UInt64(timeout * 1_000_000_000))
+                guard let openContinuation = self.openContinuation else { return }
+                self.openContinuation = nil
+                self.isOpen = false
+                self.socket?.disconnect()
+                self.socket = nil
+                openContinuation.resume(throwing: APWebSocketError.timedOut)
+            }
             webSocket.connect()
         }
     }
@@ -56,7 +68,7 @@ final class APWebSocketSession: WebSocketDelegate {
         }
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            queue.async {
+            callbackQueue.async {
                 socket.write(string: text) {
                     continuation.resume()
                 }
@@ -64,12 +76,18 @@ final class APWebSocketSession: WebSocketDelegate {
         }
     }
 
-    func close() async {
+    func close() {
+        openTimeoutTask?.cancel()
+        openTimeoutTask = nil
         isOpen = false
+        onMessage = nil
+        onClose = nil
+        if let openContinuation {
+            self.openContinuation = nil
+            openContinuation.resume(throwing: APWebSocketError.closed)
+        }
         socket?.disconnect()
         socket = nil
-        openContinuation?.resume(throwing: APWebSocketError.closed)
-        openContinuation = nil
     }
 
     // MARK: - WebSocketDelegate
@@ -77,54 +95,88 @@ final class APWebSocketSession: WebSocketDelegate {
     func didReceive(event: WebSocketEvent, client: WebSocketClient) {
         switch event {
         case .connected:
+            openTimeoutTask?.cancel()
+            openTimeoutTask = nil
             isOpen = true
-            openContinuation?.resume()
-            openContinuation = nil
+            finishOpenContinuation()
 
         case .disconnected(let reason, let code):
             let wasOpen = isOpen
             isOpen = false
             socket = nil
-            if let openContinuation {
-                self.openContinuation = nil
-                let message = "Disconnected during connect: \(reason) (code \(code))"
-                openContinuation.resume(throwing: APWebSocketError.connectionFailed(message))
+            if openContinuation != nil {
+                finishOpen(with: APWebSocketError.connectionFailed("Disconnected during connect: \(reason) (code \(code))"))
             } else if wasOpen {
-                onClose?(APWebSocketError.connectionFailed("\(reason) (code \(code))"))
+                dispatchClose(APWebSocketError.connectionFailed("\(reason) (code \(code))"))
             }
 
         case .text(let string):
-            onMessage?(string)
+            dispatchMessage(string)
 
         case .binary(let data):
             if let string = String(data: data, encoding: .utf8) {
-                onMessage?(string)
+                dispatchMessage(string)
             }
 
         case .error(let error):
             isOpen = false
-            if let openContinuation {
-                self.openContinuation = nil
-                openContinuation.resume(throwing: error ?? APWebSocketError.connectionFailed("Unknown WebSocket error"))
+            if openContinuation != nil {
+                finishOpen(with: error ?? APWebSocketError.connectionFailed("Unknown WebSocket error"))
             } else {
-                onClose?(error)
+                dispatchClose(error)
             }
 
         case .cancelled:
             isOpen = false
-            if let openContinuation {
-                self.openContinuation = nil
-                openContinuation.resume(throwing: APWebSocketError.closed)
+            if openContinuation != nil {
+                finishOpen(with: APWebSocketError.closed)
             } else {
-                onClose?(APWebSocketError.closed)
+                dispatchClose(APWebSocketError.closed)
             }
 
         case .peerClosed:
             isOpen = false
-            onClose?(nil)
+            dispatchClose(nil)
 
         case .ping, .pong, .viabilityChanged, .reconnectSuggested:
             break
+        }
+    }
+
+    private func finishOpenContinuation() {
+        guard let openContinuation else { return }
+        self.openContinuation = nil
+        openContinuation.resume()
+    }
+
+    private func finishOpen(with error: Error) {
+        openTimeoutTask?.cancel()
+        openTimeoutTask = nil
+        guard let openContinuation else { return }
+        self.openContinuation = nil
+        socket = nil
+        openContinuation.resume(throwing: error)
+    }
+
+    private func dispatchMessage(_ text: String) {
+        guard let onMessage else { return }
+        if Thread.isMainThread {
+            onMessage(text)
+        } else {
+            DispatchQueue.main.async {
+                onMessage(text)
+            }
+        }
+    }
+
+    private func dispatchClose(_ error: Error?) {
+        guard let onClose else { return }
+        if Thread.isMainThread {
+            onClose(error)
+        } else {
+            DispatchQueue.main.async {
+                onClose(error)
+            }
         }
     }
 }

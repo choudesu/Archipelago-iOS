@@ -68,6 +68,7 @@ final class APContext: ObservableObject {
     private var messageHandler: APServerMessageHandler?
     private var keepAliveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var connectionGeneration = 0
     private var disconnectedIntentionally = false
     private var currentReconnectDelay = 5
     private let startingReconnectDelay = 5
@@ -155,6 +156,7 @@ final class APContext: ObservableObject {
     func appendLog(_ text: String, parts: [JSONMessagePart] = [], isCommandEcho: Bool = false) {
         let entry = ChatLogEntry(text: text, parts: parts, isCommandEcho: isCommandEcho)
         chatLog.append(entry)
+        objectWillChange.send()
         delegate?.contextDidReceiveLog(self, entry: entry)
     }
 
@@ -380,43 +382,69 @@ final class APContext: ObservableObject {
             serverAddress = parsed.displayAddress
             Persistence.lastServerAddress = parsed.displayAddress
 
-            do {
-                try await openWebSocket(parsed: parsed)
-            } catch {
-                if parsed.websocketURL.scheme == "ws",
-                   let secure = ServerURLParser.upgradeToSecure(parsed) {
-                    appendLog("Retrying with secure WebSocket (wss://)...")
-                    try await openWebSocket(parsed: secure)
+            let candidates = ServerURLParser.connectionCandidates(parsed)
+            var lastError: Error?
+
+            for (index, candidate) in candidates.enumerated() {
+                if index == 0 {
+                    appendLog("Connecting to \(candidate.websocketURL.absoluteString)...")
                 } else {
-                    throw error
+                    appendLog("Retrying with \(candidate.websocketURL.absoluteString)...")
+                }
+
+                do {
+                    try await openWebSocket(parsed: candidate)
+                    connectionState = .connected
+                    currentReconnectDelay = startingReconnectDelay
+                    delegate?.contextDidUpdateConnectionState(self)
+                    startKeepAlive()
+                    return
+                } catch {
+                    lastError = error
+                    appendLog("Attempt failed: \(error.localizedDescription)")
+                    teardownActiveWebSocket()
                 }
             }
 
-            connectionState = .connected
-            currentReconnectDelay = startingReconnectDelay
-            delegate?.contextDidUpdateConnectionState(self)
-            startKeepAlive()
+            throw lastError ?? APWebSocketError.connectionFailed("All connection attempts failed")
         } catch {
+            connectionState = .disconnected
+            delegate?.contextDidUpdateConnectionState(self)
             handleConnectionLoss("Failed to connect to the multiworld server: \(error.localizedDescription)")
             scheduleReconnect()
         }
     }
 
     private func openWebSocket(parsed: ParsedServerURL) async throws {
+        connectionGeneration += 1
+        let generation = connectionGeneration
+
         let session = APWebSocketSession(url: parsed.websocketURL)
         webSocket = session
         session.onMessage = { [weak self] text in
             Task { @MainActor in
-                await self?.handleIncoming(text)
+                guard let self, self.connectionGeneration == generation else { return }
+                await self.handleIncoming(text)
             }
         }
         session.onClose = { [weak self] error in
             Task { @MainActor in
-                await self?.handleSocketClosed(error: error)
+                guard let self, self.connectionGeneration == generation else { return }
+                await self.handleSocketClosed(error: error)
             }
         }
+
         try await session.open()
-        appendLog("Connected to \(parsed.websocketURL.absoluteString)")
+        guard connectionGeneration == generation else {
+            throw APWebSocketError.closed
+        }
+        appendLog("WebSocket connected to \(parsed.websocketURL.absoluteString)")
+    }
+
+    private func teardownActiveWebSocket() {
+        connectionGeneration += 1
+        webSocket?.close()
+        webSocket = nil
     }
 
     private func disconnectAsync(allowAutoreconnect: Bool = false) async {
@@ -427,8 +455,7 @@ final class APContext: ObservableObject {
         }
         keepAliveTask?.cancel()
         keepAliveTask = nil
-        await webSocket?.close()
-        webSocket = nil
+        teardownActiveWebSocket()
         resetServerState()
         connectionState = .disconnected
         delegate?.contextDidUpdateConnectionState(self)
@@ -446,6 +473,8 @@ final class APContext: ObservableObject {
     }
 
     private func handleSocketClosed(error: Error?) async {
+        guard connectionState != .disconnected || webSocket != nil else { return }
+
         keepAliveTask?.cancel()
         keepAliveTask = nil
         webSocket = nil
@@ -453,11 +482,12 @@ final class APContext: ObservableObject {
         connectionState = .disconnected
         delegate?.contextDidUpdateConnectionState(self)
 
-        let hint = serverAddress.isEmpty ? "" : ", reconnect to try again"
+        let hint = serverAddress.isEmpty ? "" : " Reconnect to try again."
         if let error {
-            handleConnectionLoss("Lost connection to the multiworld server: \(error.localizedDescription)\(hint)")
+            appendLog("Lost connection to the multiworld server: \(error.localizedDescription)\(hint)")
+            delegate?.contextDidReceiveError(self, title: "Connection Lost", message: error.localizedDescription)
         } else {
-            appendLog("Disconnected from multiworld server\(hint)")
+            appendLog("Disconnected from multiworld server.\(hint)")
         }
 
         if !disconnectedIntentionally, !serverAddress.isEmpty {
