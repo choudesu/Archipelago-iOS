@@ -112,7 +112,7 @@ private final class APWebSocketDecompressor {
     }
 
     private func initInflate() -> Bool {
-        if Z_OK == inflateInit2_(
+        if Z_OK == zlib.inflateInit2_(
             &strm,
             -CInt(windowBits),
             ZLIB_VERSION,
@@ -132,33 +132,41 @@ private final class APWebSocketDecompressor {
     }
 
     func decompress(_ data: Data, finish: Bool) throws -> Data {
-        try data.withUnsafeBytes { (bytes: UnsafePointer<UInt8>) -> Data in
-            try decompress(bytes: bytes, count: data.count, finish: finish)
+        try data.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) in
+            guard let baseAddress = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                return Data()
+            }
+            return try decompress(bytes: baseAddress, count: rawBuffer.count, finish: finish)
         }
     }
 
     private func decompress(bytes: UnsafePointer<UInt8>, count: Int, finish: Bool) throws -> Data {
         var decompressed = Data()
-        try inflate(bytes: bytes, count: count, out: &decompressed)
+        try runInflate(bytes: bytes, count: count, out: &decompressed)
 
         if finish {
             let tail: [UInt8] = [0x00, 0x00, 0xFF, 0xFF]
-            try inflate(bytes: tail, count: tail.count, out: &decompressed)
+            try tail.withUnsafeBytes { rawBuffer in
+                guard let baseAddress = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                    return
+                }
+                try runInflate(bytes: baseAddress, count: rawBuffer.count, out: &decompressed)
+            }
         }
 
         return decompressed
     }
 
-    private func inflate(bytes: UnsafePointer<UInt8>, count: Int, out: inout Data) throws {
+    private func runInflate(bytes: UnsafePointer<UInt8>, count: Int, out: inout Data) throws {
         var result: CInt = 0
         strm.next_in = UnsafeMutablePointer<UInt8>(mutating: bytes)
         strm.avail_in = CUnsignedInt(count)
 
         repeat {
-            buffer.withUnsafeMutableBytes { bufferPtr in
+            buffer.withUnsafeMutableBytes { (bufferPtr: UnsafeMutableRawBufferPointer) in
                 strm.next_out = bufferPtr.bindMemory(to: UInt8.self).baseAddress
                 strm.avail_out = CUnsignedInt(bufferPtr.count)
-                result = inflate(&strm, 0)
+                result = zlib.inflate(&strm, 0)
             }
 
             let byteCount = buffer.count - Int(strm.avail_out)
@@ -173,7 +181,7 @@ private final class APWebSocketDecompressor {
     }
 
     private func teardownInflate() {
-        if inflateInitialized, Z_OK == inflateEnd(&strm) {
+        if inflateInitialized, Z_OK == zlib.inflateEnd(&strm) {
             inflateInitialized = false
         }
     }
@@ -196,7 +204,7 @@ private final class APWebSocketCompressor {
     }
 
     private func initDeflate() -> Bool {
-        if Z_OK == deflateInit2_(
+        if Z_OK == zlib.deflateInit2_(
             &strm,
             Z_DEFAULT_COMPRESSION,
             Z_DEFLATED,
@@ -224,15 +232,18 @@ private final class APWebSocketCompressor {
 
         var compressed = Data()
         var result: CInt = 0
-        data.withUnsafeBytes { (pointer: UnsafePointer<UInt8>) in
-            strm.next_in = UnsafeMutablePointer<UInt8>(mutating: pointer)
-            strm.avail_in = CUnsignedInt(data.count)
+        data.withUnsafeBytes { (rawBuffer: UnsafeRawBufferPointer) in
+            guard let baseAddress = rawBuffer.baseAddress?.assumingMemoryBound(to: UInt8.self) else {
+                return
+            }
+            strm.next_in = UnsafeMutablePointer<UInt8>(mutating: baseAddress)
+            strm.avail_in = CUnsignedInt(rawBuffer.count)
 
             repeat {
-                buffer.withUnsafeMutableBytes { bufferPtr in
+                buffer.withUnsafeMutableBytes { (bufferPtr: UnsafeMutableRawBufferPointer) in
                     strm.next_out = bufferPtr.bindMemory(to: UInt8.self).baseAddress
                     strm.avail_out = CUnsignedInt(bufferPtr.count)
-                    result = deflate(&strm, Z_SYNC_FLUSH)
+                    result = zlib.deflate(&strm, Z_SYNC_FLUSH)
                 }
 
                 let byteCount = buffer.count - Int(strm.avail_out)
@@ -251,7 +262,7 @@ private final class APWebSocketCompressor {
     }
 
     private func teardownDeflate() {
-        if deflateInitialized, Z_OK == deflateEnd(&strm) {
+        if deflateInitialized, Z_OK == zlib.deflateEnd(&strm) {
             deflateInitialized = false
         }
     }
