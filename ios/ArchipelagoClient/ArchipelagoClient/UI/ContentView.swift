@@ -28,9 +28,6 @@ struct ContentView: View {
                         .tag(2)
                 }
 
-                DataPackageStatusHost(context: viewModel.context)
-                    .padding(.horizontal)
-
                 CommandInputView(viewModel: viewModel)
             }
             .navigationTitle("Archipelago \(APVersion.clientVersion.simpleString)")
