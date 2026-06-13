@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 
+@MainActor
 enum APNotificationFilter {
     private static let systemTypes: Set<String> = [
         "Join", "Part", "Goal", "Release", "Collect",
