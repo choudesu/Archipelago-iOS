@@ -10,7 +10,6 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     @Published var showError = false
     @Published var commandHistory: [String] = []
     @Published var historyIndex = -1
-    @Published var loadedBookmarkName: String?
 
     let commands: APClientCommands
     let bookmarkStore: ConnectionBookmarkStore
@@ -93,12 +92,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
             context.setSlotName(slot)
         }
         context.password = password
-        loadedBookmarkName = bookmark.name
         selectedTab = 0
-    }
-
-    func clearLoadedBookmarkPreview() {
-        loadedBookmarkName = nil
     }
 
     func saveBookmark(name: String, serverAddress: String, slotName: String, password: String?) {
