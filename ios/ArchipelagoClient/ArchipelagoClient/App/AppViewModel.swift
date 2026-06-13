@@ -10,6 +10,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     @Published var showError = false
     @Published var commandHistory: [String] = []
     @Published var historyIndex = -1
+    @Published var loadedBookmarkName: String?
 
     let commands: APClientCommands
     let bookmarkStore: ConnectionBookmarkStore
@@ -28,6 +29,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func connect() {
+        loadedBookmarkName = nil
         var address = context.displayAddress.isEmpty ? context.suggestedAddress : context.displayAddress
         if let parsed = try? ServerURLParser.parse(address) {
             if let user = parsed.username {
@@ -70,15 +72,34 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func loadBookmark(_ bookmark: ConnectionBookmark) {
-        context.displayAddress = bookmark.serverAddress
-        context.serverAddress = bookmark.serverAddress
-        let slot = bookmark.slotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        var server = bookmark.serverAddress.trimmingCharacters(in: .whitespacesAndNewlines)
+        var slot = bookmark.slotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        var password = bookmarkStore.password(for: bookmark.id)
+
+        if let parsed = try? ServerURLParser.parse(server) {
+            if let user = parsed.username, slot.isEmpty {
+                slot = user
+            }
+            if let pass = parsed.password {
+                password = pass
+            }
+            server = parsed.displayAddress
+        }
+
+        context.displayAddress = server
+        context.serverAddress = server
         if slot.isEmpty {
             context.setSlotName(nil)
         } else {
             context.setSlotName(slot)
         }
-        context.password = bookmarkStore.password(for: bookmark.id)
+        context.password = password
+        loadedBookmarkName = bookmark.name
+        selectedTab = 0
+    }
+
+    func clearLoadedBookmarkPreview() {
+        loadedBookmarkName = nil
     }
 
     func saveBookmark(name: String, serverAddress: String, slotName: String, password: String?) {

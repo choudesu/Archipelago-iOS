@@ -12,7 +12,10 @@ struct ConnectionBarView: View {
                             ? viewModel.context.suggestedAddress
                             : viewModel.context.displayAddress
                     },
-                    set: { viewModel.context.displayAddress = $0 }
+                    set: {
+                        viewModel.clearLoadedBookmarkPreview()
+                        viewModel.context.displayAddress = $0
+                    }
                 ))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -33,7 +36,10 @@ struct ConnectionBarView: View {
             if !viewModel.context.isConnected {
                 TextField("Slot name", text: Binding(
                     get: { viewModel.context.slotName },
-                    set: { viewModel.context.setSlotName($0) }
+                    set: {
+                        viewModel.clearLoadedBookmarkPreview()
+                        viewModel.context.setSlotName($0)
+                    }
                 ))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
@@ -51,7 +57,10 @@ struct ConnectionBarView: View {
                 }
             }
 
-            ConnectionInfoView(context: viewModel.context)
+            ConnectionInfoView(
+                context: viewModel.context,
+                loadedBookmarkName: viewModel.loadedBookmarkName
+            )
 
             DataPackageStatusHost(context: viewModel.context)
         }
@@ -98,6 +107,12 @@ struct ConnectionBookmarkChipsView: View {
 
 struct ConnectionInfoView: View {
     @ObservedObject var context: APContext
+    var loadedBookmarkName: String?
+
+    private var previewServer: String {
+        let address = context.displayAddress.isEmpty ? context.serverAddress : context.displayAddress
+        return address.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
         if context.isConnected {
@@ -120,6 +135,30 @@ struct ConnectionInfoView: View {
             Text("Connecting…")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } else if !previewServer.isEmpty || !context.slotName.isEmpty || loadedBookmarkName != nil {
+            VStack(alignment: .leading, spacing: 4) {
+                if let loadedBookmarkName {
+                    Text("Bookmark: \(loadedBookmarkName)")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                if !context.slotName.isEmpty, !previewServer.isEmpty {
+                    Text("\(context.slotName) @ \(previewServer)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if !previewServer.isEmpty {
+                    Text(previewServer)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else if !context.slotName.isEmpty {
+                    Text("Slot: \(context.slotName)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Text("Tap Connect when ready.")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+            }
         }
     }
 }
