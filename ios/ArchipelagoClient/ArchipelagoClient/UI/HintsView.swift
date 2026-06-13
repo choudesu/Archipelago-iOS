@@ -44,7 +44,7 @@ struct HintsView: View {
     }
 
     private func itemName(for hint: HintEntry) -> String {
-        context.nameLookup.lookupItemInSlot(hint.item, slot: hint.findingPlayer, slotInfo: context.slotInfo)
+        context.nameLookup.lookupItemInSlot(hint.item, slot: hint.receivingPlayer, slotInfo: context.slotInfo)
     }
 
     private func locationName(for hint: HintEntry) -> String {

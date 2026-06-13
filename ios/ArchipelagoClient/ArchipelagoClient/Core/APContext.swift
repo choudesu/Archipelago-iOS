@@ -343,9 +343,14 @@ final class APContext: ObservableObject {
     }
 
     private func syncNameLookup(for games: Set<String>) {
+        var updated = false
         for game in games {
             guard let package = DataPackageCache.shared.package(for: game) else { continue }
             nameLookup.updateGame(package, game: game)
+            updated = true
+        }
+        if updated {
+            objectWillChange.send()
         }
     }
 

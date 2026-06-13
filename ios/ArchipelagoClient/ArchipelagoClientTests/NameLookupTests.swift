@@ -61,6 +61,48 @@ final class NameLookupTests: XCTestCase {
         XCTAssertEqual(lookup.lookupItemInSlot(8577001, slot: 12, slotInfo: [:]), "Unknown item (ID: 8577001)")
     }
 
+    func testHintItemUsesReceivingPlayerGame() {
+        let lookup = NameLookup()
+        lookup.updateGame(
+            GamesPackage(
+                itemNameToID: ["Hero Sword": 509342474],
+                locationNameToID: ["Combo Mult Purchase 7": 509342640],
+                itemNameGroups: nil,
+                locationNameGroups: nil,
+                checksum: nil
+            ),
+            game: "TUNIC"
+        )
+        lookup.updateGame(
+            GamesPackage(
+                itemNameToID: ["Monster Candy": 8577001],
+                locationNameToID: ["Top of the Mountain": 509342641],
+                itemNameGroups: nil,
+                locationNameGroups: nil,
+                checksum: nil
+            ),
+            game: "Undertale"
+        )
+
+        let slotInfo: [Int: NetworkSlot] = [
+            47: NetworkSlot(name: "virunasUF48", game: "TUNIC", type: SlotType.player.rawValue),
+            50: NetworkSlot(name: "viruTunic50", game: "TUNIC", type: SlotType.player.rawValue)
+        ]
+
+        XCTAssertEqual(
+            lookup.lookupItemInSlot(509342474, slot: 50, slotInfo: slotInfo),
+            "Hero Sword"
+        )
+        XCTAssertEqual(
+            lookup.lookupItemInSlot(509342474, slot: 47, slotInfo: slotInfo),
+            "Unknown item (ID: 509342474)"
+        )
+        XCTAssertEqual(
+            lookup.lookupLocationInSlot(509342640, slot: 47, slotInfo: slotInfo),
+            "Combo Mult Purchase 7"
+        )
+    }
+
     func testNetworkSlotParsesDecodedTypedValue() {
         let slot = NetworkSlot(name: "Doom I", game: "DOOM II", type: SlotType.player.rawValue)
         XCTAssertEqual(NetworkSlot.parseDecodedValue(slot)?.game, "DOOM II")
