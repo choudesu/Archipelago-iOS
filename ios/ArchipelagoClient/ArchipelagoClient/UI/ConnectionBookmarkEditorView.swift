@@ -51,7 +51,7 @@ struct ConnectionBookmarkEditorView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Bookmark") {
+                Section("Bookmark Name") {
                     TextField("Name", text: $name)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
