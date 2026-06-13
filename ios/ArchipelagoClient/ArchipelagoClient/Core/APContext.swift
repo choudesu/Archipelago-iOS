@@ -63,12 +63,14 @@ final class APContext: ObservableObject {
     @Published private(set) var chatLog: [ChatLogEntry] = []
     @Published private(set) var hints: [HintEntry] = []
     @Published var awaitingInputPrompt: String?
+    @Published private(set) var dataPackageStatus: String?
 
     private var webSocket: APWebSocketSession?
     private var messageHandler: APServerMessageHandler?
     private var keepAliveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
     private var connectionWorkTask: Task<Void, Never>?
+    private var dataPackageStatusTask: Task<Void, Never>?
     private var connectionGeneration = 0
     private var awaitingConnectResponse = false
     private var connectionRefusedHandled = false
@@ -253,17 +255,24 @@ final class APContext: ObservableObject {
     func consumeNetworkDataPackage(_ data: [String: Any]) {
         guard let games = data["games"] as? [String: [String: Any]] else { return }
         var loaded: [String] = []
+        var failed: [String] = []
         for (game, gameData) in games {
             if let package = GamesPackage.parse(gameData: gameData) {
                 DataPackageCache.shared.store(package: package, game: game)
                 nameLookup.updateGame(package, game: game)
                 loaded.append(game)
             } else {
-                appendLog("Failed to load DataPackage for \(game)")
+                failed.append(game)
             }
         }
-        if !loaded.isEmpty {
-            appendLog("Got new ID/Name DataPackage for \(loaded.sorted().joined(separator: ", "))")
+        if !loaded.isEmpty && failed.isEmpty {
+            setDataPackageStatus("Loaded data packages: \(loaded.sorted().joined(separator: ", "))")
+        } else if !loaded.isEmpty {
+            setDataPackageStatus(
+                "Loaded \(loaded.sorted().joined(separator: ", ")); failed \(failed.sorted().joined(separator: ", "))"
+            )
+        } else if !failed.isEmpty {
+            setDataPackageStatus("Failed to load data packages: \(failed.sorted().joined(separator: ", "))")
         }
     }
 
@@ -278,8 +287,32 @@ final class APContext: ObservableObject {
         syncNameLookup(for: games)
 
         guard !needed.isEmpty else { return }
+        setDataPackageStatus(
+            "Loading data packages for \(needed.sorted().joined(separator: ", "))…",
+            clearAfter: nil
+        )
         let messages = needed.map { ["cmd": "GetDataPackage", "games": [$0]] as [String: Any] }
         await sendMessages(messages)
+    }
+
+    func setDataPackageStatus(_ status: String?, clearAfter seconds: TimeInterval? = 4) {
+        dataPackageStatusTask?.cancel()
+        dataPackageStatusTask = nil
+        dataPackageStatus = status
+        guard let status, !status.isEmpty, let seconds else { return }
+        dataPackageStatusTask = Task {
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            if dataPackageStatus == status {
+                dataPackageStatus = nil
+            }
+        }
+    }
+
+    private func clearDataPackageStatus() {
+        dataPackageStatusTask?.cancel()
+        dataPackageStatusTask = nil
+        dataPackageStatus = nil
     }
 
     private func syncNameLookup(for games: Set<String>) {
@@ -541,6 +574,7 @@ final class APContext: ObservableObject {
         }
         keepAliveTask?.cancel()
         keepAliveTask = nil
+        clearDataPackageStatus()
         teardownActiveWebSocket()
         resetServerState()
         connectionState = .disconnected
@@ -548,7 +582,7 @@ final class APContext: ObservableObject {
     }
 
     private static let noisyIncomingCommands: Set<String> = [
-        "PrintJSON", "RoomUpdate", "ReceivedItems", "Bounced", "SetReply", "Retrieved"
+        "PrintJSON", "RoomUpdate", "ReceivedItems", "Bounced", "SetReply", "Retrieved", "DataPackage"
     ]
 
     private func handleIncoming(_ text: String) async {
@@ -556,7 +590,6 @@ final class APContext: ObservableObject {
             let messages = try APCodec.decode(text)
             for message in messages {
                 if let cmd = message["cmd"] as? String,
-                   cmd != "DataPackage",
                    !Self.noisyIncomingCommands.contains(cmd) {
                     appendLog("← \(cmd)")
                 }
