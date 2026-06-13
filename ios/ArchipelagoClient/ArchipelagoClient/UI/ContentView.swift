@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
@@ -32,7 +35,7 @@ struct ContentView: View {
                         .tag(3)
                 }
                 .onChange(of: viewModel.selectedTab) { _, _ in
-                    KeyboardDismiss.dismiss()
+                    dismissKeyboard()
                 }
 
                 CommandInputView(viewModel: viewModel)
@@ -63,6 +66,19 @@ struct ContentView: View {
         }
     }
 }
+
+#if canImport(UIKit)
+private func dismissKeyboard() {
+    UIApplication.shared.sendAction(
+        #selector(UIResponder.resignFirstResponder),
+        to: nil,
+        from: nil,
+        for: nil
+    )
+}
+#else
+private func dismissKeyboard() {}
+#endif
 
 struct SettingsView: View {
     @ObservedObject var viewModel: AppViewModel
