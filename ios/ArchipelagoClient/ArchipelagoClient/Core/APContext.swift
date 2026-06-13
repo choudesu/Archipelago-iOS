@@ -68,12 +68,14 @@ final class APContext: ObservableObject {
     private var messageHandler: APServerMessageHandler?
     private var keepAliveTask: Task<Void, Never>?
     private var reconnectTask: Task<Void, Never>?
+    private var connectionWorkTask: Task<Void, Never>?
     private var connectionGeneration = 0
     private var awaitingConnectResponse = false
     private var connectionRefusedHandled = false
     private var disconnectedIntentionally = false
-    private var currentReconnectDelay = 5
-    private let startingReconnectDelay = 5
+    private var currentReconnectDelay = 30
+    private let startingReconnectDelay = 30
+    private let maxReconnectDelay = 300
     private var inputContinuation: CheckedContinuation<String, Never>?
 
     var commandProcessor: APClientCommands?
@@ -107,10 +109,25 @@ final class APContext: ObservableObject {
     }
 
     func connect(address: String? = nil) {
-        Task { await connectAsync(address: address) }
+        disconnectedIntentionally = false
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        connectionWorkTask?.cancel()
+        connectionWorkTask = Task { @MainActor in
+            await connectAsync(address: address, isAutoReconnect: false)
+        }
     }
 
     func disconnect(allowAutoreconnect: Bool = false) {
+        if !allowAutoreconnect {
+            disconnectedIntentionally = true
+            currentReconnectDelay = startingReconnectDelay
+            APNotificationService.shared.clearBackgroundDisconnectState()
+            reconnectTask?.cancel()
+            reconnectTask = nil
+            connectionWorkTask?.cancel()
+            connectionWorkTask = nil
+        }
         Task { await disconnectAsync(allowAutoreconnect: allowAutoreconnect) }
     }
 
@@ -414,9 +431,12 @@ final class APContext: ObservableObject {
 
     // MARK: - Connection lifecycle
 
-    private func connectAsync(address: String?) async {
+    private func connectAsync(address: String?, isAutoReconnect: Bool = false) async {
+        if isAutoReconnect && disconnectedIntentionally { return }
+        if Task.isCancelled { return }
+
         await disconnectAsync(allowAutoreconnect: true)
-        disconnectedIntentionally = false
+        if Task.isCancelled || disconnectedIntentionally { return }
 
         let target = (address?.isEmpty == false ? address : nil) ?? (serverAddress.isEmpty ? nil : serverAddress)
         guard let target, !target.isEmpty else {
@@ -439,6 +459,8 @@ final class APContext: ObservableObject {
             var lastError: Error?
 
             for (index, candidate) in candidates.enumerated() {
+                if Task.isCancelled || disconnectedIntentionally { return }
+
                 if index == 0 {
                     appendLog("Connecting to \(candidate.websocketURL.absoluteString)...")
                 } else {
@@ -447,6 +469,10 @@ final class APContext: ObservableObject {
 
                 do {
                     try await openWebSocket(parsed: candidate)
+                    if Task.isCancelled || disconnectedIntentionally {
+                        teardownActiveWebSocket()
+                        return
+                    }
                     connectionState = .connected
                     currentReconnectDelay = startingReconnectDelay
                     delegate?.contextDidUpdateConnectionState(self)
@@ -461,6 +487,7 @@ final class APContext: ObservableObject {
 
             throw lastError ?? APWebSocketError.connectionFailed("All connection attempts failed")
         } catch {
+            if Task.isCancelled || disconnectedIntentionally { return }
             connectionState = .disconnected
             delegate?.contextDidUpdateConnectionState(self)
             handleConnectionLoss("Failed to connect to the multiworld server: \(error.localizedDescription)")
@@ -505,9 +532,12 @@ final class APContext: ObservableObject {
     private func disconnectAsync(allowAutoreconnect: Bool = false) async {
         if !allowAutoreconnect {
             disconnectedIntentionally = true
+            currentReconnectDelay = startingReconnectDelay
             APNotificationService.shared.clearBackgroundDisconnectState()
             reconnectTask?.cancel()
             reconnectTask = nil
+            connectionWorkTask?.cancel()
+            connectionWorkTask = nil
         }
         keepAliveTask?.cancel()
         keepAliveTask = nil
@@ -584,14 +614,24 @@ final class APContext: ObservableObject {
     }
 
     private func scheduleReconnect() {
+        guard !disconnectedIntentionally, !serverAddress.isEmpty else { return }
+
         reconnectTask?.cancel()
         let delay = currentReconnectDelay
-        currentReconnectDelay = min(currentReconnectDelay * 2, 120)
+        currentReconnectDelay = min(currentReconnectDelay * 2, maxReconnectDelay)
         appendLog("Automatically reconnecting in \(delay) seconds")
-        reconnectTask = Task {
-            try? await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
+        reconnectTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: UInt64(delay) * 1_000_000_000)
+            } catch {
+                return
+            }
             guard !Task.isCancelled, !disconnectedIntentionally else { return }
-            await connectAsync(address: serverAddress)
+            connectionWorkTask?.cancel()
+            connectionWorkTask = Task { @MainActor in
+                await connectAsync(address: serverAddress, isAutoReconnect: true)
+            }
+            await connectionWorkTask?.value
         }
     }
 
