@@ -106,7 +106,7 @@ struct ConnectionInfoView: View {
                     let slotLabel = context.slotName.isEmpty
                         ? "Slot \(slot)"
                         : "\(context.slotName) · Slot \(slot)"
-                    Text("\(slotLabel) · Team \(team + 1) · \(context.game)")
+                    Text("\(slotLabel) · Team \(team + 1) · \(context.activeGameName)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

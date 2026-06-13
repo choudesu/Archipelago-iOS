@@ -179,13 +179,12 @@ final class APServerMessageHandler {
         }
 
         let activeGame: String
-        if !context.game.isEmpty {
-            activeGame = context.game
-        } else if let slot = context.slot, let info = context.slotInfo[slot] {
+        if let slot = context.slot, let info = context.slotInfo[slot] {
             activeGame = info.game
             context.game = info.game
         } else {
             activeGame = ""
+            context.game = ""
         }
 
         if !activeGame.isEmpty {

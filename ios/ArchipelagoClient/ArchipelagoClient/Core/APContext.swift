@@ -253,6 +253,7 @@ final class APContext: ObservableObject {
     func resetServerState() {
         slot = nil
         team = nil
+        game = ""
         itemsReceived = []
         locationsInfo = [:]
         serverVersion = APVersion(major: 0, minor: 0, build: 0)
@@ -474,10 +475,20 @@ final class APContext: ObservableObject {
 
     func onPackage(cmd: String, args: [String: Any]) {
         if cmd == "Connected" {
-            if game.isEmpty, let slot, let info = slotInfo[slot] {
+            if let slot, let info = slotInfo[slot] {
                 game = info.game
+            } else {
+                game = ""
             }
         }
+    }
+
+    /// Game for the currently joined slot, preferring live slot info over cached state.
+    var activeGameName: String {
+        if let slot, let info = slotInfo[slot], !info.game.isEmpty {
+            return info.game
+        }
+        return game
     }
 
     func handleConnectionLoss(_ message: String) {

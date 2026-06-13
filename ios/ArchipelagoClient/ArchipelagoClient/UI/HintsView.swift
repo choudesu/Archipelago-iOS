@@ -142,8 +142,8 @@ struct HintInputView: View {
     @Binding var query: String
 
     private var suggestions: [String] {
-        guard !context.game.isEmpty else { return [] }
-        let names = context.nameLookup.itemNames(for: context.game)
+        guard !context.activeGameName.isEmpty else { return [] }
+        let names = context.nameLookup.itemNames(for: context.activeGameName)
         guard !query.isEmpty else { return [] }
         return names.filter { $0.localizedCaseInsensitiveContains(query) }.prefix(8).map { $0 }
     }
