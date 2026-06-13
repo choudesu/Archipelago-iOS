@@ -59,9 +59,16 @@ struct ContentView: View {
 
 struct SettingsView: View {
     @ObservedObject var viewModel: AppViewModel
+    @ObservedObject private var bookmarkStore: ConnectionBookmarkStore
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.defaultMode.rawValue
     @AppStorage(Persistence.notificationsEnabledKey) private var notificationsEnabled = false
     @State private var deathLinkEnabled = Persistence.deathLinkEnabled
+    @State private var editingBookmark: ConnectionBookmark?
+
+    init(viewModel: AppViewModel) {
+        self.viewModel = viewModel
+        self._bookmarkStore = ObservedObject(wrappedValue: viewModel.bookmarkStore)
+    }
 
     var body: some View {
         Form {
@@ -84,6 +91,35 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section("Connection Bookmarks") {
+                if bookmarkStore.bookmarks.isEmpty {
+                    Text("No bookmarks yet. Use + on the connect bar to save one.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(bookmarkStore.bookmarks) { bookmark in
+                        Button {
+                            editingBookmark = bookmark
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(bookmark.name)
+                                Text(bookmark.subtitle)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    .onDelete { offsets in
+                        for index in offsets {
+                            viewModel.deleteBookmark(bookmarkStore.bookmarks[index])
+                        }
+                    }
+                    .onMove { offsets, destination in
+                        bookmarkStore.move(fromOffsets: offsets, toOffset: destination)
+                    }
+                }
+            }
             Section("Connection") {
                 Text("Client UUID: \(Persistence.clientUUID)")
                     .font(.caption)
@@ -98,6 +134,17 @@ struct SettingsView: View {
             Section("Help") {
                 Text(viewModel.commands.helpText())
                     .font(.caption)
+            }
+        }
+        .sheet(item: $editingBookmark) { bookmark in
+            ConnectionBookmarkEditorView(mode: .edit(bookmark)) { name, serverAddress, slotName, password in
+                viewModel.updateBookmark(
+                    bookmark,
+                    name: name,
+                    serverAddress: serverAddress,
+                    slotName: slotName,
+                    password: password
+                )
             }
         }
     }

@@ -12,11 +12,13 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     @Published var historyIndex = -1
 
     let commands: APClientCommands
+    let bookmarkStore: ConnectionBookmarkStore
 
-    init() {
+    init(bookmarkStore: ConnectionBookmarkStore = .shared) {
         let context = APContext()
         self.context = context
         self.commands = APClientCommands(context: context)
+        self.bookmarkStore = bookmarkStore
         context.commandProcessor = self.commands
         context.delegate = self
         if Persistence.deathLinkEnabled {
@@ -34,6 +36,76 @@ final class AppViewModel: ObservableObject, APContextDelegate {
 
     func disconnect() {
         context.disconnect()
+    }
+
+    func currentServerAddress() -> String {
+        let address = context.displayAddress.isEmpty ? context.suggestedAddress : context.displayAddress
+        return address.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func currentSlotName() -> String {
+        (context.auth ?? context.username ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    func currentPassword() -> String? {
+        context.password
+    }
+
+    func suggestedBookmarkName() -> String {
+        let address = currentServerAddress()
+        let slot = currentSlotName()
+        if address.isEmpty {
+            return slot.isEmpty ? "Bookmark" : slot
+        }
+        if slot.isEmpty {
+            return address
+        }
+        return "\(slot)@\(address)"
+    }
+
+    func loadBookmark(_ bookmark: ConnectionBookmark) {
+        context.displayAddress = bookmark.serverAddress
+        context.serverAddress = bookmark.serverAddress
+        let slot = bookmark.slotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if slot.isEmpty {
+            context.auth = nil
+            context.username = nil
+        } else {
+            context.auth = slot
+            context.username = slot
+        }
+        context.password = bookmarkStore.password(for: bookmark.id)
+    }
+
+    func saveBookmark(name: String, serverAddress: String, slotName: String, password: String?) {
+        bookmarkStore.add(
+            name: name,
+            serverAddress: serverAddress,
+            slotName: slotName,
+            password: password
+        )
+    }
+
+    func updateBookmark(
+        _ bookmark: ConnectionBookmark,
+        name: String,
+        serverAddress: String,
+        slotName: String,
+        password: String?
+    ) {
+        let updated = ConnectionBookmark(
+            id: bookmark.id,
+            name: name,
+            serverAddress: serverAddress,
+            slotName: slotName,
+            createdAt: bookmark.createdAt
+        )
+        bookmarkStore.update(updated, password: password)
+    }
+
+    func deleteBookmark(_ bookmark: ConnectionBookmark) {
+        bookmarkStore.delete(bookmark)
     }
 
     func submitInput() {
