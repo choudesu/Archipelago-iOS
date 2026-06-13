@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChatLogView: View {
     @ObservedObject var viewModel: AppViewModel
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollViewReader { proxy in
@@ -37,7 +38,11 @@ struct ChatLogView: View {
     private func messageView(for entry: ChatLogEntry) -> some View {
         if entry.attributedParts.isEmpty {
             Text(entry.text)
-                .foregroundStyle(entry.isCommandEcho ? .orange : .primary)
+                .foregroundStyle(
+                    entry.isCommandEcho
+                        ? APArchipelagoColors.palette(for: colorScheme).orange
+                        : Color.primary
+                )
         } else {
             Text(renderedMessage(for: entry))
         }
@@ -50,7 +55,8 @@ struct ChatLogView: View {
             nameLookup: context.nameLookup,
             slot: context.slot,
             slotInfo: context.slotInfo,
-            slotConcernsSelf: context.slotConcernsSelf
+            slotConcernsSelf: context.slotConcernsSelf,
+            colorScheme: colorScheme
         )
         return renderer.renderAttributed(entry.attributedParts)
     }

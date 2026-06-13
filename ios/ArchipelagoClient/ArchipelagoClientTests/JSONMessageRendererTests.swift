@@ -93,6 +93,33 @@ final class JSONMessageRendererTests: XCTestCase {
         XCTAssertEqual(foregroundColor(of: "(priority)", in: attributed), APArchipelagoColors.plum)
     }
 
+    func testLightPaletteImprovesContrastOnWhiteBackground() {
+        let darkYellow = APArchipelagoColors.rgbHex(APArchipelagoColors.dark.yellow)
+        let lightYellow = APArchipelagoColors.rgbHex(APArchipelagoColors.light.yellow)
+        let darkCyan = APArchipelagoColors.rgbHex(APArchipelagoColors.dark.cyan)
+        let lightCyan = APArchipelagoColors.rgbHex(APArchipelagoColors.light.cyan)
+
+        XCTAssertNotEqual(darkYellow, lightYellow)
+        XCTAssertNotEqual(darkCyan, lightCyan)
+        XCTAssertEqual(lightYellow, "8B7500")
+        XCTAssertEqual(lightCyan, "007A7A")
+    }
+
+    func testLightModeRendererUsesReadablePlayerColors() throws {
+        let parts = try decodeParts(#"[{"text":"7","type":"player_id"}]"#)
+        let renderer = JSONMessageRenderer(
+            playerNames: [7: "Other Player"],
+            nameLookup: lookup,
+            slot: 5,
+            slotInfo: slotInfo,
+            slotConcernsSelf: { $0 == 5 },
+            colorScheme: .light
+        )
+        let attributed = renderer.renderAttributed(parts)
+
+        XCTAssertEqual(foregroundColor(of: "Other Player", in: attributed), APArchipelagoColors.light.yellow)
+    }
+
     func testRenderPlainStringMatchesAttributedOutput() throws {
         let parts = try decodeParts(
             #"[
