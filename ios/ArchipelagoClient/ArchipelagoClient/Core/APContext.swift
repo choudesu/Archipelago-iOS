@@ -342,6 +342,7 @@ final class APContext: ObservableObject {
             slotConcernsSelf: slotConcernsSelf
         )
         appendLog(renderer.render(parts), parts: parts)
+        APNotificationService.shared.notifyChat(args: args, context: self)
     }
 
     func onPrint(_ args: [String: Any]) {

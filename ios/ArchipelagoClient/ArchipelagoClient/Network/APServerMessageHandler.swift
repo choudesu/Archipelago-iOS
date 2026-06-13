@@ -222,10 +222,14 @@ final class APServerMessageHandler {
         context.delegate?.contextDidUpdateConnectionState(context)
         context.delegate?.contextDidUpdateProgress(context)
         context.appendLog("Joined slot \(context.slot ?? 0) on team \((context.team ?? 0) + 1) as \(context.auth ?? "player")")
+        if Persistence.notificationsEnabled {
+            Task { _ = await APNotificationService.shared.requestPermissionIfNeeded() }
+        }
     }
 
     private func handleReceivedItems(_ args: [String: Any]) async {
         let startIndex = args["index"] as? Int ?? 0
+        let isIncrementalDelivery = startIndex > 0 && startIndex == context.itemsReceived.count
 
         if startIndex == 0 {
             context.itemsReceived = []
@@ -242,19 +246,28 @@ final class APServerMessageHandler {
 
         if startIndex == context.itemsReceived.count,
            let items = args["items"] as? [Any] {
+            var newItems: [NetworkItem] = []
             for itemValue in items {
                 if let item = itemValue as? NetworkItem {
                     context.itemsReceived.append(item)
+                    newItems.append(item)
                 } else if let tuple = itemValue as? [Any], tuple.count >= 3 {
                     let item = Int(tuple[0] as? Int ?? 0)
                     let location = Int(tuple[1] as? Int ?? 0)
                     let player = Int(tuple[2] as? Int ?? 0)
                     let flags = tuple.count > 3 ? Int(tuple[3] as? Int ?? 0) : 0
-                    context.itemsReceived.append(NetworkItem(item: item, location: location, player: player, flags: flags))
+                    let networkItem = NetworkItem(item: item, location: location, player: player, flags: flags)
+                    context.itemsReceived.append(networkItem)
+                    newItems.append(networkItem)
                 }
             }
             if let team = context.team, let slot = context.slot {
                 Persistence.saveReceivedItemsIndex(context.itemsReceived.count, slot: slot, team: team)
+            }
+            if isIncrementalDelivery {
+                for item in newItems {
+                    APNotificationService.shared.notifyReceivedItem(item, context: context)
+                }
             }
         }
     }

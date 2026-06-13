@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.defaultMode.rawValue
+    @Environment(\.scenePhase) private var scenePhase
 
     private var appearanceMode: AppearanceMode {
         AppearanceMode(rawValue: appearanceModeRaw) ?? .defaultMode
@@ -38,12 +39,22 @@ struct ContentView: View {
             }
         }
         .preferredColorScheme(appearanceMode.colorScheme)
+        .onChange(of: scenePhase) { _, phase in
+            APNotificationService.shared.setAppActive(phase == .active)
+        }
+        .onAppear {
+            APNotificationService.shared.setAppActive(scenePhase == .active)
+        }
     }
 }
 
 struct SettingsView: View {
     @ObservedObject var viewModel: AppViewModel
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.defaultMode.rawValue
+    @AppStorage(Persistence.notificationsEnabledKey) private var notificationsEnabled = false
+    @AppStorage(Persistence.notificationChatEnabledKey) private var notificationChatEnabled = true
+    @AppStorage(Persistence.notificationItemsEnabledKey) private var notificationItemsEnabled = true
+    @AppStorage(Persistence.notificationForegroundEnabledKey) private var notificationForegroundEnabled = false
     @State private var deathLinkEnabled = Persistence.deathLinkEnabled
 
     var body: some View {
@@ -55,6 +66,22 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+            }
+            Section("Notifications") {
+                Toggle("Enable Notifications", isOn: $notificationsEnabled)
+                    .onChange(of: notificationsEnabled) { _, enabled in
+                        if enabled {
+                            Task { _ = await APNotificationService.shared.requestPermissionIfNeeded() }
+                        }
+                    }
+                if notificationsEnabled {
+                    Toggle("Chat Messages", isOn: $notificationChatEnabled)
+                    Toggle("Items & Traps Received", isOn: $notificationItemsEnabled)
+                    Toggle("Notify While App Is Open", isOn: $notificationForegroundEnabled)
+                    Text("Notifications require an active connection. iOS may suspend the app in the background.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             Section("Connection") {
                 Text("Client UUID: \(Persistence.clientUUID)")
