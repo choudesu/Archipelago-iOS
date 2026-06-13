@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import UserNotifications
 
 @MainActor
@@ -6,19 +7,62 @@ final class APNotificationService {
     static let shared = APNotificationService()
 
     private static let disconnectNotificationID = "archipelago.disconnect"
+    private static let minimumTriggerInterval: TimeInterval = 1
 
     private(set) var isAppActive = true
     private(set) var leftAppWhileJoined = false
 
-    private init() {}
-
-    func setAppActive(_ active: Bool, joined: Bool) {
-        if !active && joined {
-            leftAppWhileJoined = true
+    private init() {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didEnterBackgroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.isAppActive = false
+            }
         }
-        isAppActive = active
-        if active {
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.isAppActive = true
+            }
+        }
+    }
+
+    func handleEnterBackground(joined: Bool, connected: Bool) {
+        isAppActive = false
+        guard joined, connected, Persistence.notificationsEnabled else { return }
+
+        leftAppWhileJoined = true
+        Task {
+            guard await requestPermissionIfNeeded() else { return }
+            scheduleDisconnectNotification()
+        }
+    }
+
+    func handleEnterForeground(stillConnected: Bool) {
+        isAppActive = true
+
+        if stillConnected {
             cancelPendingDisconnectNotification()
+            clearBackgroundDisconnectState()
+            return
+        }
+
+        guard leftAppWhileJoined,
+              Persistence.notificationsEnabled else {
+            clearBackgroundDisconnectState()
+            return
+        }
+
+        Task {
+            guard await requestPermissionIfNeeded() else { return }
+            scheduleDisconnectNotification()
+            clearBackgroundDisconnectState()
         }
     }
 
@@ -50,12 +94,15 @@ final class APNotificationService {
         guard Persistence.notificationsEnabled,
               wasJoined,
               !intentional,
-              !isAppActive || leftAppWhileJoined else {
+              leftAppWhileJoined || !isAppActive else {
             return
         }
 
-        scheduleDisconnectNotification()
-        leftAppWhileJoined = false
+        Task {
+            guard await requestPermissionIfNeeded() else { return }
+            scheduleDisconnectNotification()
+            clearBackgroundDisconnectState()
+        }
     }
 
     private func scheduleDisconnectNotification() {
@@ -64,13 +111,20 @@ final class APNotificationService {
         content.body = "The app was closed or backgrounded. Reopen to reconnect to the multiworld."
         content.sound = .default
 
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 0.1, repeats: false)
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: Self.minimumTriggerInterval,
+            repeats: false
+        )
         let request = UNNotificationRequest(
             identifier: Self.disconnectNotificationID,
             content: content,
             trigger: trigger
         )
-        UNUserNotificationCenter.current().add(request)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                NSLog("Failed to schedule disconnect notification: \(error.localizedDescription)")
+            }
+        }
     }
 
     private func cancelPendingDisconnectNotification() {

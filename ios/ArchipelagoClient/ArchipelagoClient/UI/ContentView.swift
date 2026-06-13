@@ -40,12 +40,19 @@ struct ContentView: View {
         }
         .preferredColorScheme(appearanceMode.colorScheme)
         .onChange(of: scenePhase) { _, phase in
-            let joined = viewModel.context.slot != nil
-            APNotificationService.shared.setAppActive(phase == .active, joined: joined)
-        }
-        .onAppear {
-            let joined = viewModel.context.slot != nil
-            APNotificationService.shared.setAppActive(scenePhase == .active, joined: joined)
+            let context = viewModel.context
+            let joined = context.slot != nil
+            let connected = context.isConnected
+            switch phase {
+            case .background:
+                APNotificationService.shared.handleEnterBackground(joined: joined, connected: connected)
+            case .active:
+                APNotificationService.shared.handleEnterForeground(stillConnected: connected)
+            case .inactive:
+                break
+            @unknown default:
+                break
+            }
         }
     }
 }
@@ -73,7 +80,7 @@ struct SettingsView: View {
                             Task { _ = await APNotificationService.shared.requestPermissionIfNeeded() }
                         }
                     }
-                Text("Notifies you when the connection drops because the app was closed or moved to the background.")
+                Text("Notifies you when the app moves to the background while connected. Allow notifications when prompted.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

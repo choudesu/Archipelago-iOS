@@ -6,29 +6,39 @@ final class APNotificationServiceTests: XCTestCase {
     override func setUp() {
         super.setUp()
         Persistence.notificationsEnabled = true
-        APNotificationService.shared.setAppActive(true, joined: false)
         APNotificationService.shared.clearBackgroundDisconnectState()
     }
 
-    func testDoesNotNotifyForIntentionalDisconnect() {
-        APNotificationService.shared.setAppActive(false, joined: true)
-        APNotificationService.shared.notifyDisconnectedDueToBackground(wasJoined: true, intentional: true)
+    func testDoesNotScheduleWithoutNotificationsEnabled() {
+        Persistence.notificationsEnabled = false
+        APNotificationService.shared.handleEnterBackground(joined: true, connected: true)
         XCTAssertFalse(APNotificationService.shared.leftAppWhileJoined)
     }
 
-    func testDoesNotNotifyWhenStillInForegroundWithoutBackgrounding() {
-        APNotificationService.shared.setAppActive(true, joined: false)
-        APNotificationService.shared.notifyDisconnectedDueToBackground(wasJoined: true, intentional: false)
-        XCTAssertTrue(APNotificationService.shared.leftAppWhileJoined == false)
-    }
-
-    func testMarksBackgroundStateWhenLeavingAppWhileJoined() {
-        APNotificationService.shared.setAppActive(false, joined: true)
+    func testMarksBackgroundWhenJoinedAndConnected() {
+        APNotificationService.shared.handleEnterBackground(joined: true, connected: true)
         XCTAssertTrue(APNotificationService.shared.leftAppWhileJoined)
     }
 
-    func testClearsBackgroundStateOnReconnect() {
-        APNotificationService.shared.setAppActive(false, joined: true)
+    func testDoesNotMarkBackgroundWhenNotConnected() {
+        APNotificationService.shared.handleEnterBackground(joined: true, connected: false)
+        XCTAssertFalse(APNotificationService.shared.leftAppWhileJoined)
+    }
+
+    func testForegroundWhileConnectedClearsBackgroundState() {
+        APNotificationService.shared.handleEnterBackground(joined: true, connected: true)
+        APNotificationService.shared.handleEnterForeground(stillConnected: true)
+        XCTAssertFalse(APNotificationService.shared.leftAppWhileJoined)
+    }
+
+    func testDoesNotNotifyForIntentionalDisconnect() {
+        APNotificationService.shared.handleEnterBackground(joined: true, connected: true)
+        APNotificationService.shared.notifyDisconnectedDueToBackground(wasJoined: true, intentional: true)
+        XCTAssertTrue(APNotificationService.shared.leftAppWhileJoined)
+    }
+
+    func testClearsBackgroundStateOnDemand() {
+        APNotificationService.shared.handleEnterBackground(joined: true, connected: true)
         APNotificationService.shared.clearBackgroundDisconnectState()
         XCTAssertFalse(APNotificationService.shared.leftAppWhileJoined)
     }
