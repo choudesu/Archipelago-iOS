@@ -31,6 +31,9 @@ struct ContentView: View {
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(3)
                 }
+                .onChange(of: viewModel.selectedTab) { _, _ in
+                    KeyboardDismiss.dismiss()
+                }
 
                 CommandInputView(viewModel: viewModel)
             }
@@ -104,6 +107,7 @@ struct SettingsView: View {
                     .font(.caption)
             }
         }
+        .dismissKeyboardOnScroll()
     }
 }
 

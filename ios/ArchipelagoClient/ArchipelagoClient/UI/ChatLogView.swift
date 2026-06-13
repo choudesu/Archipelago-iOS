@@ -24,6 +24,7 @@ struct ChatLogView: View {
                 }
                 .padding()
             }
+            .dismissKeyboardOnScroll()
             .onChange(of: viewModel.context.chatLog.count) { _, _ in
                 if let last = viewModel.context.chatLog.last {
                     withAnimation {

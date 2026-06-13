@@ -81,6 +81,7 @@
 		AA0001010000000000000032 /* ConnectionBookmarkStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarkStore.swift; sourceTree = "<group>"; };
 		AA0001010000000000000033 /* ConnectionBookmarkEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarkEditorView.swift; sourceTree = "<group>"; };
 		AA0001010000000000000035 /* ConnectionBookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarksView.swift; sourceTree = "<group>"; };
+		AA0001010000000000000036 /* KeyboardDismiss.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardDismiss.swift; sourceTree = "<group>"; };
 		AA0001010000000000000034 /* ConnectionBookmarkStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarkStoreTests.swift; sourceTree = "<group>"; };
 		AA0001010000000000000028 /* APWSCompression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APWSCompression.swift; sourceTree = "<group>"; };
 		AA0002010000000000000001 /* ArchipelagoClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArchipelagoClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
