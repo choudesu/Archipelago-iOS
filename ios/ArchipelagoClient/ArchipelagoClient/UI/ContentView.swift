@@ -2,6 +2,11 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var viewModel = AppViewModel()
+    @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.defaultMode.rawValue
+
+    private var appearanceMode: AppearanceMode {
+        AppearanceMode(rawValue: appearanceModeRaw) ?? .defaultMode
+    }
 
     var body: some View {
         NavigationStack {
@@ -32,15 +37,25 @@ struct ContentView: View {
                 Text(viewModel.errorMessage ?? "")
             }
         }
+        .preferredColorScheme(appearanceMode.colorScheme)
     }
 }
 
 struct SettingsView: View {
     @ObservedObject var viewModel: AppViewModel
+    @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.defaultMode.rawValue
     @State private var deathLinkEnabled = Persistence.deathLinkEnabled
 
     var body: some View {
         Form {
+            Section("Appearance") {
+                Picker("Theme", selection: $appearanceModeRaw) {
+                    ForEach(AppearanceMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
             Section("Connection") {
                 Text("Client UUID: \(Persistence.clientUUID)")
                     .font(.caption)
