@@ -99,6 +99,32 @@ final class APContext: ObservableObject {
         self.serverAddress = serverAddress
         self.password = password
         self.messageHandler = APServerMessageHandler(context: self)
+        let savedSlot = Persistence.lastSlotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !savedSlot.isEmpty {
+            auth = savedSlot
+            username = savedSlot
+        }
+        if self.serverAddress.isEmpty, !Persistence.lastServerAddress.isEmpty {
+            self.serverAddress = Persistence.lastServerAddress
+            displayAddress = Persistence.lastServerAddress
+        }
+    }
+
+    func setSlotName(_ name: String?) {
+        let trimmed = name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if trimmed.isEmpty {
+            auth = nil
+            username = nil
+            Persistence.lastSlotName = ""
+        } else {
+            auth = trimmed
+            username = trimmed
+            Persistence.lastSlotName = trimmed
+        }
+    }
+
+    var slotName: String {
+        (auth ?? username ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     func slotConcernsSelf(_ slot: Int) -> Bool {
@@ -380,6 +406,8 @@ final class APContext: ObservableObject {
             return
         }
         auth = name
+        username = name
+        Persistence.lastSlotName = name
         await sendConnect()
     }
 
@@ -514,7 +542,9 @@ final class APContext: ObservableObject {
 
         do {
             let parsed = try ServerURLParser.parse(target)
-            if let user = parsed.username { username = user }
+            if let user = parsed.username {
+                setSlotName(user)
+            }
             if let pass = parsed.password { password = pass }
             displayAddress = parsed.displayAddress
             serverAddress = parsed.displayAddress

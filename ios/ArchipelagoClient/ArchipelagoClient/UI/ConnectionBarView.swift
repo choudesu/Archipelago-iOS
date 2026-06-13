@@ -31,6 +31,16 @@ struct ConnectionBarView: View {
             }
 
             if !viewModel.context.isConnected {
+                TextField("Slot name", text: Binding(
+                    get: { viewModel.context.slotName },
+                    set: { viewModel.context.setSlotName($0) }
+                ))
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .textFieldStyle(.roundedBorder)
+            }
+
+            if !viewModel.context.isConnected {
                 ConnectionBookmarkChipsView(viewModel: viewModel)
             }
 
@@ -93,7 +103,10 @@ struct ConnectionInfoView: View {
         if context.isConnected {
             VStack(alignment: .leading, spacing: 4) {
                 if let slot = context.slot, let team = context.team {
-                    Text("Slot \(slot) · Team \(team + 1) · \(context.game)")
+                    let slotLabel = context.slotName.isEmpty
+                        ? "Slot \(slot)"
+                        : "\(context.slotName) · Slot \(slot)"
+                    Text("\(slotLabel) · Team \(team + 1) · \(context.game)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

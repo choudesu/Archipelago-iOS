@@ -8,6 +8,7 @@ enum Persistence {
     private enum Keys {
         static let clientUUID = "ap.client.uuid"
         static let lastServerAddress = "ap.client.lastServerAddress"
+        static let lastSlotName = "ap.client.lastSlotName"
         static let deathLinkEnabled = "ap.client.deathLinkEnabled"
         static let notificationsEnabled = notificationsEnabledKey
     }
@@ -24,6 +25,11 @@ enum Persistence {
     static var lastServerAddress: String {
         get { defaults.string(forKey: Keys.lastServerAddress) ?? "" }
         set { defaults.set(newValue, forKey: Keys.lastServerAddress) }
+    }
+
+    static var lastSlotName: String {
+        get { defaults.string(forKey: Keys.lastSlotName) ?? "" }
+        set { defaults.set(newValue, forKey: Keys.lastSlotName) }
     }
 
     static var deathLinkEnabled: Bool {

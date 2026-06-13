@@ -112,8 +112,7 @@ final class APServerMessageHandler {
         if errors.contains("InvalidSlot") {
             let attempted = context.auth ?? context.username ?? "(empty)"
             context.appendLog("Invalid slot name \"\(attempted)\". Enter the exact slot name from your YAML.")
-            context.auth = nil
-            context.username = nil
+            context.setSlotName(nil)
             context.delegate?.contextDidReceiveError(
                 context,
                 title: "Invalid Slot",

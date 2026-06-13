@@ -28,9 +28,15 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func connect() {
-        let address = context.displayAddress.isEmpty ? context.suggestedAddress : context.displayAddress
+        var address = context.displayAddress.isEmpty ? context.suggestedAddress : context.displayAddress
+        if let parsed = try? ServerURLParser.parse(address) {
+            if let user = parsed.username {
+                context.setSlotName(user)
+            }
+            address = parsed.displayAddress
+            context.displayAddress = address
+        }
         context.serverAddress = address
-        context.displayAddress = address
         context.connect()
     }
 
@@ -44,8 +50,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func currentSlotName() -> String {
-        (context.auth ?? context.username ?? "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
+        context.slotName
     }
 
     func currentPassword() -> String? {
@@ -69,11 +74,9 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         context.serverAddress = bookmark.serverAddress
         let slot = bookmark.slotName.trimmingCharacters(in: .whitespacesAndNewlines)
         if slot.isEmpty {
-            context.auth = nil
-            context.username = nil
+            context.setSlotName(nil)
         } else {
-            context.auth = slot
-            context.username = slot
+            context.setSlotName(slot)
         }
         context.password = bookmarkStore.password(for: bookmark.id)
     }
