@@ -16,9 +16,3 @@ enum KeyboardDismiss {
         #endif
     }
 }
-
-extension View {
-    func dismissKeyboardOnScroll() -> some View {
-        scrollDismissesKeyboard(.interactively)
-    }
-}

@@ -39,7 +39,7 @@ struct HintsView: View {
                     }
                     .padding(.vertical, 4)
                 }
-                .dismissKeyboardOnScroll()
+                .scrollDismissesKeyboard(.interactively)
             }
         }
     }
@@ -92,7 +92,6 @@ struct HintInputView: View {
                         }
                     }
                 }
-                .dismissKeyboardOnScroll()
             }
         }
         .padding(.horizontal)

@@ -107,7 +107,7 @@ struct SettingsView: View {
                     .font(.caption)
             }
         }
-        .dismissKeyboardOnScroll()
+        .scrollDismissesKeyboard(.interactively)
     }
 }
 

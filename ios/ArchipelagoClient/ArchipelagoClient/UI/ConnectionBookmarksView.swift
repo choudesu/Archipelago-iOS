@@ -73,7 +73,7 @@ struct ConnectionBookmarksView: View {
                 }
                 .listStyle(.insetGrouped)
                 .environment(\.editMode, $editMode)
-                .dismissKeyboardOnScroll()
+                .scrollDismissesKeyboard(.interactively)
             }
         }
         .sheet(isPresented: $showCreateSheet) {
