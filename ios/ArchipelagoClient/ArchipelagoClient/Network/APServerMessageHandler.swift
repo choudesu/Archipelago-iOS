@@ -162,12 +162,9 @@ final class APServerMessageHandler {
         context.slotInfo = [0: NetworkSlot(name: "Archipelago", game: "Archipelago", type: SlotType.player.rawValue)]
         if let slotInfo = args["slot_info"] as? [String: Any] {
             for (key, value) in slotInfo {
-                guard let slot = Int(key) else { continue }
-                if let dict = value as? [String: Any],
-                   let json = try? JSONSerialization.data(withJSONObject: dict),
-                   let networkSlot = try? JSONDecoder().decode(NetworkSlot.self, from: json) {
-                    context.slotInfo[slot] = networkSlot
-                }
+                guard let slot = Int(key),
+                      let networkSlot = NetworkSlot.parseDecodedValue(value) else { continue }
+                context.slotInfo[slot] = networkSlot
             }
         }
 

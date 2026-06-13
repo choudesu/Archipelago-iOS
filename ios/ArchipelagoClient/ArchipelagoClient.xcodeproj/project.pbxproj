@@ -332,6 +332,7 @@
 				AA0000010000000000000020 /* APCodecTests.swift in Sources */,
 				AA0000010000000000000021 /* ServerURLParserTests.swift in Sources */,
 				AA0000010000000000000022 /* DataPackageChecksumTests.swift in Sources */,
+				AA0000010000000000000029 /* NameLookupTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

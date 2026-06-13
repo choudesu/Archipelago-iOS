@@ -237,8 +237,7 @@ final class APContext: ObservableObject {
         guard let games = data["games"] as? [String: [String: Any]] else { return }
         var loaded: [String] = []
         for (game, gameData) in games {
-            if let json = try? JSONSerialization.data(withJSONObject: gameData),
-               let package = try? JSONDecoder().decode(GamesPackage.self, from: json) {
+            if let package = GamesPackage.parse(gameData: gameData) {
                 DataPackageCache.shared.store(package: package, game: game)
                 nameLookup.updateGame(package, game: game)
                 loaded.append(game)

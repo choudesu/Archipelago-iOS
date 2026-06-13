@@ -82,6 +82,19 @@ struct NetworkSlot: Codable, Equatable, Sendable {
         self.type = type
         self.groupMembers = groupMembers
     }
+
+    /// APCodec decodes server payloads into typed values; fall back to raw dictionaries for tests.
+    static func parseDecodedValue(_ value: Any) -> NetworkSlot? {
+        if let slot = value as? NetworkSlot {
+            return slot
+        }
+        guard let dict = value as? [String: Any],
+              let json = try? JSONSerialization.data(withJSONObject: dict),
+              let slot = try? JSONDecoder().decode(NetworkSlot.self, from: json) else {
+            return nil
+        }
+        return slot
+    }
 }
 
 struct HintEntry: Identifiable, Equatable, Sendable {
@@ -196,6 +209,59 @@ struct GamesPackage: Codable, Sendable {
         case itemNameGroups = "item_name_groups"
         case locationNameGroups = "location_name_groups"
         case checksum
+    }
+
+    static func parse(gameData: [String: Any]) -> GamesPackage? {
+        guard let itemRaw = gameData["item_name_to_id"] as? [String: Any],
+              let locationRaw = gameData["location_name_to_id"] as? [String: Any] else {
+            return nil
+        }
+
+        return GamesPackage(
+            itemNameToID: parseNameToID(itemRaw),
+            locationNameToID: parseNameToID(locationRaw),
+            itemNameGroups: parseNameGroups(gameData["item_name_groups"]),
+            locationNameGroups: parseNameGroups(gameData["location_name_groups"]),
+            checksum: gameData["checksum"] as? String
+        )
+    }
+
+    private static func parseNameToID(_ raw: [String: Any]) -> [String: Int] {
+        var result: [String: Int] = [:]
+        for (name, value) in raw {
+            if let id = coerceInt(value) {
+                result[name] = id
+            }
+        }
+        return result
+    }
+
+    private static func parseNameGroups(_ value: Any?) -> [String: [String]]? {
+        guard let raw = value as? [String: Any] else { return nil }
+        var result: [String: [String]] = [:]
+        for (name, groupValue) in raw {
+            if let names = groupValue as? [String] {
+                result[name] = names
+            }
+        }
+        return result.isEmpty ? nil : result
+    }
+
+    private static func coerceInt(_ value: Any) -> Int? {
+        switch value {
+        case let int as Int:
+            return int
+        case let int64 as Int64:
+            return Int(int64)
+        case let number as NSNumber:
+            return Int(truncating: number)
+        case let double as Double:
+            return Int(double)
+        case let string as String:
+            return Int(string)
+        default:
+            return nil
+        }
     }
 }
 
