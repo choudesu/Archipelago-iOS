@@ -74,3 +74,149 @@ struct ConnectionInfoView: View {
         }
     }
 }
+
+struct DataPackageStatusHost: View {
+    @ObservedObject var context: APContext
+    @State private var displayed: DataPackageStatusInfo?
+    @State private var isVisible = false
+
+    var body: some View {
+        Group {
+            if let displayed {
+                DataPackageStatusBanner(info: displayed, isVisible: isVisible)
+            }
+        }
+        .animation(.spring(response: 0.45, dampingFraction: 0.84), value: isVisible)
+        .animation(.spring(response: 0.45, dampingFraction: 0.84), value: displayed?.id)
+        .onChange(of: context.dataPackageStatus) { _, newStatus in
+            handleStatusChange(newStatus)
+        }
+        .onAppear {
+            if let status = context.dataPackageStatus {
+                displayed = status
+                isVisible = true
+            }
+        }
+    }
+
+    private func handleStatusChange(_ newStatus: DataPackageStatusInfo?) {
+        if let newStatus {
+            displayed = newStatus
+            if !isVisible {
+                isVisible = true
+            }
+            return
+        }
+
+        guard displayed != nil else { return }
+        isVisible = false
+        Task {
+            try? await Task.sleep(nanoseconds: 450_000_000)
+            if context.dataPackageStatus == nil {
+                displayed = nil
+            }
+        }
+    }
+}
+
+struct DataPackageStatusBanner: View {
+    let info: DataPackageStatusInfo
+    let isVisible: Bool
+
+    @State private var gameIndex = 0
+    @State private var scrollTask: Task<Void, Never>?
+
+    private let rowHeight: CGFloat = 16
+    private let gameScrollInterval: UInt64 = 1_200_000_000
+    private let gameScrollAnimation: Double = 0.4
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(info.prefix)
+                .font(.caption.weight(.medium))
+                .foregroundStyle(.secondary)
+
+            gameTicker
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .clipped()
+        .offset(y: isVisible ? 0 : -rowHeight - 8)
+        .opacity(isVisible ? 1 : 0)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+        .onAppear {
+            gameIndex = 0
+            startScrollingIfNeeded()
+        }
+        .onDisappear {
+            scrollTask?.cancel()
+            scrollTask = nil
+        }
+        .onChange(of: info.id) { _, _ in
+            gameIndex = 0
+            restartScrolling()
+        }
+        .onChange(of: info.games) { _, _ in
+            gameIndex = min(gameIndex, max(info.games.count - 1, 0))
+            restartScrolling()
+        }
+    }
+
+    @ViewBuilder
+    private var gameTicker: some View {
+        if info.games.isEmpty {
+            Text("…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        } else if info.games.count == 1, let game = info.games.first {
+            Text(game)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        } else {
+            ZStack(alignment: .leading) {
+                Text(info.games[gameIndex])
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(height: rowHeight, alignment: .leading)
+                    .id("\(info.id)-\(gameIndex)")
+                    .transition(
+                        .asymmetric(
+                            insertion: .move(edge: .bottom).combined(with: .opacity),
+                            removal: .move(edge: .top).combined(with: .opacity)
+                        )
+                    )
+            }
+            .frame(height: rowHeight, alignment: .leading)
+            .clipped()
+        }
+    }
+
+    private var accessibilityText: String {
+        let games = info.games.joined(separator: ", ")
+        return "\(info.prefix): \(games)"
+    }
+
+    private func restartScrolling() {
+        scrollTask?.cancel()
+        scrollTask = nil
+        startScrollingIfNeeded()
+    }
+
+    private func startScrollingIfNeeded() {
+        guard info.games.count > 1 else { return }
+        scrollTask = Task {
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: gameScrollInterval)
+                guard !Task.isCancelled else { return }
+                await MainActor.run {
+                    withAnimation(.easeInOut(duration: gameScrollAnimation)) {
+                        gameIndex = (gameIndex + 1) % info.games.count
+                    }
+                }
+            }
+        }
+    }
+}
