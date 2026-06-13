@@ -43,6 +43,7 @@ final class APWebSocketSession: WebSocketDelegate {
 
         let compression = APWSCompression()
         let webSocket = WebSocket(request: request, compressionHandler: compression)
+        webSocket.respondToPingWithPong = true
         webSocket.callbackQueue = callbackQueue
         webSocket.delegate = self
         socket = webSocket
@@ -175,7 +176,7 @@ final class APWebSocketSession: WebSocketDelegate {
         if trimmed.isEmpty {
             switch code {
             case 1002:
-                return "WebSocket protocol error — message decompression may have failed (code 1002)"
+                return "WebSocket protocol error — server rejected a compressed control frame or invalid data (code 1002)"
             default:
                 return "Connection closed (code \(code))"
             }
