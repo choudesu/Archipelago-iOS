@@ -38,7 +38,7 @@ struct ConnectionBookmarksView: View {
                 ContentUnavailableView {
                     Label("No Bookmarks", systemImage: "bookmark")
                 } description: {
-                    Text("Save connection presets from + here or on the connect bar.")
+                    Text("Save connection presets with + above.")
                 } actions: {
                     Button("Save Bookmark") {
                         showCreateSheet = true
