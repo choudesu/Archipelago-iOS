@@ -120,6 +120,52 @@ struct JSONMessagePart: Codable, Equatable, Sendable {
         case text, type, color, player, flags
         case hintStatus = "hint_status"
     }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        text = try Self.decodeFlexibleString(from: container, forKey: .text)
+        type = try container.decodeIfPresent(String.self, forKey: .type)
+        color = try container.decodeIfPresent(String.self, forKey: .color)
+        player = try Self.decodeFlexibleInt(from: container, forKey: .player)
+        flags = try Self.decodeFlexibleInt(from: container, forKey: .flags)
+        hintStatus = try Self.decodeFlexibleInt(from: container, forKey: .hintStatus)
+    }
+
+    private static func decodeFlexibleString(
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) throws -> String? {
+        if let value = try container.decodeIfPresent(String.self, forKey: key) {
+            return value
+        }
+        if let value = try container.decodeIfPresent(Int.self, forKey: key) {
+            return String(value)
+        }
+        return nil
+    }
+
+    private static func decodeFlexibleInt(
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) throws -> Int? {
+        if let value = try container.decodeIfPresent(Int.self, forKey: key) {
+            return value
+        }
+        if let value = try container.decodeIfPresent(String.self, forKey: key) {
+            return Int(value)
+        }
+        return nil
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encodeIfPresent(text, forKey: .text)
+        try container.encodeIfPresent(type, forKey: .type)
+        try container.encodeIfPresent(color, forKey: .color)
+        try container.encodeIfPresent(player, forKey: .player)
+        try container.encodeIfPresent(flags, forKey: .flags)
+        try container.encodeIfPresent(hintStatus, forKey: .hintStatus)
+    }
 }
 
 struct ChatLogEntry: Identifiable, Equatable, Sendable {

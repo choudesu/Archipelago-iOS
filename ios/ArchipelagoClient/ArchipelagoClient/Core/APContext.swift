@@ -235,24 +235,42 @@ final class APContext: ObservableObject {
 
     func consumeNetworkDataPackage(_ data: [String: Any]) {
         guard let games = data["games"] as? [String: [String: Any]] else { return }
+        var loaded: [String] = []
         for (game, gameData) in games {
             if let json = try? JSONSerialization.data(withJSONObject: gameData),
                let package = try? JSONDecoder().decode(GamesPackage.self, from: json) {
                 DataPackageCache.shared.store(package: package, game: game)
                 nameLookup.updateGame(package, game: game)
+                loaded.append(game)
+            } else {
+                appendLog("Failed to load DataPackage for \(game)")
             }
         }
-        appendLog("Got new ID/Name DataPackage for \(games.keys.sorted().joined(separator: ", "))")
+        if !loaded.isEmpty {
+            appendLog("Got new ID/Name DataPackage for \(loaded.sorted().joined(separator: ", "))")
+        }
     }
 
     func prepareDataPackage(relevantGames: Set<String>, remoteChecksums: [String: String]) async {
+        var games = relevantGames
+        games.insert("Archipelago")
+
         let needed = DataPackageCache.shared.gamesNeedingUpdate(
-            relevantGames: relevantGames,
+            relevantGames: games,
             remoteChecksums: remoteChecksums
         )
+        syncNameLookup(for: games)
+
         guard !needed.isEmpty else { return }
         let messages = needed.map { ["cmd": "GetDataPackage", "games": [$0]] as [String: Any] }
         await sendMessages(messages)
+    }
+
+    private func syncNameLookup(for games: Set<String>) {
+        for game in games {
+            guard let package = DataPackageCache.shared.package(for: game) else { continue }
+            nameLookup.updateGame(package, game: game)
+        }
     }
 
     func serverAuth(passwordRequested: Bool) async {
