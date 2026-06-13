@@ -51,6 +51,7 @@ struct ConnectionBookmarksView: View {
                     ForEach(bookmarkStore.bookmarks) { bookmark in
                         BookmarkRow(
                             bookmark: bookmark,
+                            canLoad: viewModel.canLoadBookmark,
                             onLoad: { viewModel.loadBookmark(bookmark) },
                             onEdit: { editingBookmark = bookmark }
                         )
@@ -108,6 +109,7 @@ struct ConnectionBookmarksView: View {
 
 private struct BookmarkRow: View {
     let bookmark: ConnectionBookmark
+    let canLoad: Bool
     let onLoad: () -> Void
     let onEdit: () -> Void
 
@@ -127,6 +129,7 @@ private struct BookmarkRow: View {
             Button("Load", action: onLoad)
                 .buttonStyle(.borderedProminent)
                 .font(.caption)
+                .disabled(!canLoad)
         }
         .padding(.vertical, 2)
     }

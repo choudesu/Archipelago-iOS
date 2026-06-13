@@ -70,6 +70,8 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func loadBookmark(_ bookmark: ConnectionBookmark) {
+        guard canLoadBookmark else { return }
+
         var server = bookmark.serverAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         var slot = bookmark.slotName.trimmingCharacters(in: .whitespacesAndNewlines)
         var password = bookmarkStore.password(for: bookmark.id)
@@ -93,6 +95,10 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         }
         context.password = password
         selectedTab = 0
+    }
+
+    var canLoadBookmark: Bool {
+        !context.isConnected && context.connectionState != .connecting
     }
 
     func saveBookmark(name: String, serverAddress: String, slotName: String, password: String?) {
