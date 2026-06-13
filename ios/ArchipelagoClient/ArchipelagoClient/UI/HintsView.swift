@@ -2,43 +2,39 @@ import SwiftUI
 
 struct HintsView: View {
     @ObservedObject var context: APContext
+    @Environment(\.colorScheme) private var colorScheme
     @State private var hintQuery = ""
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 0) {
             HintInputView(context: context, query: $hintQuery)
 
             if context.hints.isEmpty {
-                ContentUnavailableView("No Hints", systemImage: "lightbulb", description: Text("Hints appear here after connecting."))
+                ContentUnavailableView(
+                    "No Hints",
+                    systemImage: "lightbulb",
+                    description: Text("Hints appear here after connecting.")
+                )
+                .frame(maxHeight: .infinity)
             } else {
                 List(context.hints) { hint in
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(itemName(for: hint))
-                            .font(.headline)
-                        Text("Location: \(locationName(for: hint))")
-                            .font(.subheadline)
-                        Text("From \(playerName(hint.findingPlayer)) to \(playerName(hint.receivingPlayer))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        if !hint.entrance.isEmpty {
-                            Text("Entrance: \(hint.entrance)")
-                                .font(.caption2)
+                    HintRowView(
+                        hint: hint,
+                        itemName: itemName(for: hint),
+                        locationName: locationName(for: hint),
+                        findingPlayer: playerName(hint.findingPlayer),
+                        receivingPlayer: playerName(hint.receivingPlayer),
+                        onStatusChange: { status in
+                            context.updateHint(
+                                location: hint.location,
+                                findingPlayer: hint.findingPlayer,
+                                status: status
+                            )
                         }
-                        Menu(hint.status.displayName) {
-                            ForEach(HintStatus.allCases, id: \.rawValue) { status in
-                                Button(status.displayName) {
-                                    context.updateHint(
-                                        location: hint.location,
-                                        findingPlayer: hint.findingPlayer,
-                                        status: status
-                                    )
-                                }
-                            }
-                        }
-                        .font(.caption)
-                    }
-                    .padding(.vertical, 4)
+                    )
+                    .listRowInsets(EdgeInsets(top: 10, leading: 12, bottom: 10, trailing: 12))
                 }
+                .listStyle(.insetGrouped)
                 .scrollDismissesKeyboard(.interactively)
             }
         }
@@ -54,6 +50,90 @@ struct HintsView: View {
 
     private func playerName(_ slot: Int) -> String {
         context.playerNames[slot] ?? "Player \(slot)"
+    }
+}
+
+private struct HintRowView: View {
+    @Environment(\.colorScheme) private var colorScheme
+
+    let hint: HintEntry
+    let itemName: String
+    let locationName: String
+    let findingPlayer: String
+    let receivingPlayer: String
+    let onStatusChange: (HintStatus) -> Void
+
+    private var palette: APArchipelagoColors.Palette {
+        APArchipelagoColors.palette(for: colorScheme)
+    }
+
+    private var isFound: Bool {
+        hint.found || hint.status == .found
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            statusControl
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(itemName)
+                    .font(.headline)
+                    .foregroundStyle(isFound ? .secondary : .primary)
+
+                Label(locationName, systemImage: "mappin.and.ellipse")
+                    .font(.subheadline)
+                    .foregroundStyle(palette.green)
+                    .lineLimit(2)
+
+                Text("\(findingPlayer) → \(receivingPlayer)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if !hint.entrance.isEmpty {
+                    Text(hint.entrance)
+                        .font(.caption2)
+                        .foregroundStyle(palette.blue)
+                }
+            }
+        }
+        .opacity(isFound ? 0.72 : 1)
+    }
+
+    @ViewBuilder
+    private var statusControl: some View {
+        let status = isFound ? HintStatus.found : hint.status
+        let color = status.uiColor(for: colorScheme)
+
+        if isFound {
+            statusBadge(status: status, color: color)
+        } else {
+            Menu {
+                ForEach(HintStatus.selectableCases, id: \.rawValue) { option in
+                    Button {
+                        onStatusChange(option)
+                    } label: {
+                        HStack {
+                            Image(systemName: option.systemImage)
+                            Text(option.menuTitle)
+                        }
+                        .foregroundStyle(option.uiColor(for: colorScheme))
+                    }
+                }
+            } label: {
+                statusBadge(status: status, color: color)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func statusBadge(status: HintStatus, color: Color) -> some View {
+        Image(systemName: status.systemImage)
+            .font(.body.weight(.semibold))
+            .foregroundStyle(color)
+            .frame(width: 34, height: 34)
+            .background(color.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .accessibilityLabel("Hint status: \(status.menuTitle)")
     }
 }
 
@@ -95,5 +175,6 @@ struct HintInputView: View {
             }
         }
         .padding(.horizontal)
+        .padding(.vertical, 8)
     }
 }
