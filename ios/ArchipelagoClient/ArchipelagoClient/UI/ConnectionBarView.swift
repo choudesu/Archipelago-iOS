@@ -30,25 +30,18 @@ struct ConnectionBarView: View {
                 .buttonStyle(.borderedProminent)
             }
 
-            if let total = viewModel.context.totalLocations, total > 0 {
-                if let status = viewModel.context.dataPackageStatus {
-                    Text(status)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+            if viewModel.context.dataPackageStatus != nil
+                || (viewModel.context.totalLocations ?? 0) > 0 {
+                VStack(alignment: .leading, spacing: 4) {
+                    DataPackageStatusHost(context: viewModel.context)
 
-                ProgressView(value: viewModel.context.progressValue) {
-                    Text("Checks: \(viewModel.context.checkedLocations.count)/\(total)")
-                        .font(.caption)
+                    if let total = viewModel.context.totalLocations, total > 0 {
+                        ProgressView(value: viewModel.context.progressValue) {
+                            Text("Checks: \(viewModel.context.checkedLocations.count)/\(total)")
+                                .font(.caption)
+                        }
+                    }
                 }
-            } else if let status = viewModel.context.dataPackageStatus {
-                Text(status)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             ConnectionInfoView(context: viewModel.context)

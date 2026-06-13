@@ -269,6 +269,32 @@ struct DataPackage: Codable, Sendable {
     var games: [String: GamesPackage]
 }
 
+struct DataPackageStatusInfo: Equatable, Identifiable, Sendable {
+    enum Phase: Equatable, Sendable {
+        case loading
+        case loaded
+        case failed
+    }
+
+    let id: UUID
+    var phase: Phase
+    var games: [String]
+
+    init(phase: Phase, games: [String], id: UUID = UUID()) {
+        self.id = id
+        self.phase = phase
+        self.games = games
+    }
+
+    var prefix: String {
+        switch phase {
+        case .loading: "Loading data packages"
+        case .loaded: "Loaded data packages"
+        case .failed: "Failed to load data packages"
+        }
+    }
+}
+
 enum ConnectionState: Equatable, Sendable {
     case disconnected
     case connecting

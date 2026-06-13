@@ -27,6 +27,7 @@
 		AA0000010000000000000010 /* CommandInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000010 /* CommandInputView.swift */; };
 		AA0000010000000000000011 /* HintsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000011 /* HintsView.swift */; };
 		AA0000010000000000000012 /* JSONMessageRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000012 /* JSONMessageRenderer.swift */; };
+		AA0000010000000000000031 /* DataPackageStatusBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000031 /* DataPackageStatusBanner.swift */; };
 		AA000001000000000000002A /* APArchipelagoColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000101000000000000002A /* APArchipelagoColors.swift */; };
 		AA0000010000000000000013 /* archipelago_datapackage.json in Resources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000013 /* archipelago_datapackage.json */; };
 		AA0000010000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000014 /* Assets.xcassets */; };

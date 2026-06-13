@@ -63,7 +63,7 @@ final class APContext: ObservableObject {
     @Published private(set) var chatLog: [ChatLogEntry] = []
     @Published private(set) var hints: [HintEntry] = []
     @Published var awaitingInputPrompt: String?
-    @Published private(set) var dataPackageStatus: String?
+    @Published private(set) var dataPackageStatus: DataPackageStatusInfo?
 
     private var webSocket: APWebSocketSession?
     private var messageHandler: APServerMessageHandler?
@@ -266,13 +266,13 @@ final class APContext: ObservableObject {
             }
         }
         if !loaded.isEmpty && failed.isEmpty {
-            setDataPackageStatus("Loaded data packages: \(loaded.sorted().joined(separator: ", "))")
+            setDataPackageStatus(DataPackageStatusInfo(phase: .loaded, games: loaded.sorted()))
         } else if !loaded.isEmpty {
             setDataPackageStatus(
-                "Loaded \(loaded.sorted().joined(separator: ", ")); failed \(failed.sorted().joined(separator: ", "))"
+                DataPackageStatusInfo(phase: .loaded, games: (loaded + failed).sorted())
             )
         } else if !failed.isEmpty {
-            setDataPackageStatus("Failed to load data packages: \(failed.sorted().joined(separator: ", "))")
+            setDataPackageStatus(DataPackageStatusInfo(phase: .failed, games: failed.sorted()))
         }
     }
 
@@ -288,22 +288,35 @@ final class APContext: ObservableObject {
 
         guard !needed.isEmpty else { return }
         setDataPackageStatus(
-            "Loading data packages for \(needed.sorted().joined(separator: ", "))…",
+            DataPackageStatusInfo(phase: .loading, games: needed.sorted()),
             clearAfter: nil
         )
         let messages = needed.map { ["cmd": "GetDataPackage", "games": [$0]] as [String: Any] }
         await sendMessages(messages)
     }
 
-    func setDataPackageStatus(_ status: String?, clearAfter seconds: TimeInterval? = 4) {
+    func setDataPackageStatus(_ status: DataPackageStatusInfo?, clearAfter seconds: TimeInterval? = 4) {
         dataPackageStatusTask?.cancel()
         dataPackageStatusTask = nil
-        dataPackageStatus = status
-        guard let status, !status.isEmpty, let seconds else { return }
+
+        var resolved = status
+        if var updated = status, let current = dataPackageStatus {
+            switch (current.phase, updated.phase) {
+            case (.loading, .loading), (.loading, .loaded):
+                updated = DataPackageStatusInfo(phase: updated.phase, games: updated.games, id: current.id)
+            default:
+                break
+            }
+            resolved = updated
+        }
+
+        let statusID = resolved?.id
+        dataPackageStatus = resolved
+        guard resolved != nil, let seconds else { return }
         dataPackageStatusTask = Task {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
-            if dataPackageStatus == status {
+            if dataPackageStatus?.id == statusID {
                 dataPackageStatus = nil
             }
         }
