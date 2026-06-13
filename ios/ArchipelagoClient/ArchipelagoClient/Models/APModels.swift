@@ -98,7 +98,6 @@ struct NetworkSlot: Codable, Equatable, Sendable {
 }
 
 struct HintEntry: Identifiable, Equatable, Sendable {
-    let id: String
     var receivingPlayer: Int
     var findingPlayer: Int
     var location: Int
@@ -107,6 +106,10 @@ struct HintEntry: Identifiable, Equatable, Sendable {
     var entrance: String
     var itemFlags: Int
     var status: HintStatus
+
+    var id: String {
+        "\(findingPlayer)-\(location)-\(item)-\(receivingPlayer)-\(status.rawValue)"
+    }
 
     init(from dict: [String: Any]) {
         receivingPlayer = dict["receiving_player"] as? Int ?? 0
@@ -117,7 +120,6 @@ struct HintEntry: Identifiable, Equatable, Sendable {
         entrance = dict["entrance"] as? String ?? ""
         itemFlags = dict["item_flags"] as? Int ?? 0
         status = HintStatus(rawValue: dict["status"] as? Int ?? 0) ?? .unspecified
-        id = "\(findingPlayer)-\(location)-\(item)-\(receivingPlayer)"
     }
 }
 

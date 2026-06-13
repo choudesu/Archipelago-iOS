@@ -179,15 +179,44 @@ final class APContext: ObservableObject {
     }
 
     func updateHint(location: Int, findingPlayer: Int, status: HintStatus?) {
-        var message: [String: Any] = [
+        guard let status else { return }
+        applyLocalHintStatus(location: location, findingPlayer: findingPlayer, status: status)
+
+        let message: [String: Any] = [
             "cmd": "UpdateHint",
             "location": location,
-            "player": findingPlayer
+            "player": findingPlayer,
+            "status": status.rawValue
         ]
-        if let status {
-            message["status"] = status.rawValue
-        }
         Task { await sendMessages([message]) }
+    }
+
+    func canUpdateHint(_ hint: HintEntry) -> Bool {
+        guard isConnected, !hint.found, hint.status != .found else { return false }
+        return slotConcernsSelf(hint.receivingPlayer)
+    }
+
+    private func applyLocalHintStatus(location: Int, findingPlayer: Int, status: HintStatus) {
+        guard let team, let slot else { return }
+        let key = "_read_hints_\(team)_\(slot)"
+
+        hints = hints.map { hint in
+            guard hint.location == location, hint.findingPlayer == findingPlayer else { return hint }
+            var updated = hint
+            updated.status = status
+            return updated
+        }
+
+        guard var raw = storedData[key] as? [[String: Any]] else { return }
+        for index in raw.indices {
+            let entryLocation = raw[index]["location"] as? Int
+            let entryFindingPlayer = raw[index]["finding_player"] as? Int
+            if entryLocation == location, entryFindingPlayer == findingPlayer {
+                raw[index]["status"] = status.rawValue
+                break
+            }
+        }
+        storedData[key] = raw
     }
 
     func updateDeathLink(_ enabled: Bool) {
@@ -221,6 +250,7 @@ final class APContext: ObservableObject {
         } else {
             hints = []
         }
+        objectWillChange.send()
         delegate?.contextDidUpdateHints(self)
     }
 

@@ -20,6 +20,7 @@ struct HintsView: View {
                 List(context.hints) { hint in
                     HintRowView(
                         hint: hint,
+                        canEdit: context.canUpdateHint(hint),
                         itemName: itemName(for: hint),
                         locationName: locationName(for: hint),
                         findingPlayer: playerName(hint.findingPlayer),
@@ -57,6 +58,7 @@ private struct HintRowView: View {
     @Environment(\.colorScheme) private var colorScheme
 
     let hint: HintEntry
+    let canEdit: Bool
     let itemName: String
     let locationName: String
     let findingPlayer: String
@@ -106,24 +108,22 @@ private struct HintRowView: View {
 
         if isFound {
             statusBadge(status: status, color: color)
-        } else {
+        } else if canEdit {
             Menu {
                 ForEach(HintStatus.selectableCases, id: \.rawValue) { option in
                     Button {
                         onStatusChange(option)
                     } label: {
-                        HStack {
-                            Image(systemName: option.systemImage)
-                            Text(option.menuTitle)
-                        }
-                        .foregroundStyle(option.uiColor(for: colorScheme))
+                        Label(option.menuTitle, systemImage: option.systemImage)
                     }
                 }
             } label: {
                 statusBadge(status: status, color: color)
             }
-            .menuStyle(.button)
-            .buttonStyle(.plain)
+            .buttonStyle(.borderless)
+        } else {
+            statusBadge(status: status, color: color)
+                .opacity(0.85)
         }
     }
 
