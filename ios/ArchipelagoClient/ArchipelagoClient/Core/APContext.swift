@@ -208,6 +208,20 @@ final class APContext: ObservableObject {
         connectionRefusedHandled = false
     }
 
+    /// Stops a failed join attempt without scheduling auto-reconnect.
+    func abortFailedConnect() async {
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        connectionWorkTask?.cancel()
+        connectionWorkTask = nil
+        awaitingConnectResponse = false
+        connectionRefusedHandled = true
+        disconnectedIntentionally = true
+        currentReconnectDelay = startingReconnectDelay
+        APNotificationService.shared.clearBackgroundDisconnectState()
+        await disconnectAsync(allowAutoreconnect: false)
+    }
+
     // MARK: - Internal handlers used by APServerMessageHandler
 
     func resetServerState() {

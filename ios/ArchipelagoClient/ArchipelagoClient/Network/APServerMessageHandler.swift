@@ -110,15 +110,16 @@ final class APServerMessageHandler {
         context.appendLog("Connection refused: \(errors.isEmpty ? "unknown reason" : errors.joined(separator: ", "))")
 
         if errors.contains("InvalidSlot") {
-            let attempted = context.auth ?? "(empty)"
+            let attempted = context.auth ?? context.username ?? "(empty)"
             context.appendLog("Invalid slot name \"\(attempted)\". Enter the exact slot name from your YAML.")
             context.auth = nil
+            context.username = nil
             context.delegate?.contextDidReceiveError(
                 context,
                 title: "Invalid Slot",
                 message: "Slot \"\(attempted)\" was not found. Check spelling and try again."
             )
-            await context.getUsername()
+            await context.abortFailedConnect()
         } else if errors.contains("InvalidGame") {
             context.appendLog("Invalid game for this slot. Retrying as text client...")
             await context.sendConnect(extra: ["game": ""])
@@ -128,12 +129,14 @@ final class APServerMessageHandler {
                 title: "Incompatible Version",
                 message: "Server rejected protocol version \(context.serverVersion.simpleString). The server may require an exact client version match."
             )
+            await context.abortFailedConnect()
         } else if errors.contains("InvalidItemsHandling") {
             context.delegate?.contextDidReceiveError(
                 context,
                 title: "Invalid Items Handling",
                 message: "The item handling flags requested by the client are not supported."
             )
+            await context.abortFailedConnect()
         } else if errors.contains("InvalidPassword") {
             context.appendLog("Invalid password")
             context.password = nil
@@ -144,12 +147,14 @@ final class APServerMessageHandler {
                 title: "Connection Refused",
                 message: "Connection refused by the multiworld host, no reason provided."
             )
+            await context.abortFailedConnect()
         } else {
             context.delegate?.contextDidReceiveError(
                 context,
                 title: "Connection Refused",
                 message: errors.joined(separator: ", ")
             )
+            await context.abortFailedConnect()
         }
     }
 
