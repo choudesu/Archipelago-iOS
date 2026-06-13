@@ -36,10 +36,7 @@ struct ConnectionBarView: View {
             if !viewModel.context.isConnected {
                 TextField("Slot name", text: Binding(
                     get: { viewModel.context.slotName },
-                    set: {
-                        viewModel.clearLoadedBookmarkPreview()
-                        viewModel.context.setSlotName($0)
-                    }
+                    set: { viewModel.context.setSlotName($0) }
                 ))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()

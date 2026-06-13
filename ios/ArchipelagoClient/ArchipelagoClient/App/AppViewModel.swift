@@ -29,7 +29,6 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func connect() {
-        loadedBookmarkName = nil
         var address = context.displayAddress.isEmpty ? context.suggestedAddress : context.displayAddress
         if let parsed = try? ServerURLParser.parse(address) {
             if let user = parsed.username {
