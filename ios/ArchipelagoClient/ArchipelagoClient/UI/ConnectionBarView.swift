@@ -136,7 +136,7 @@ struct DataPackageStatusBanner: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .clipped()
-        .offset(y: isVisible ? 0 : rowHeight + 8)
+        .offset(y: isVisible ? 0 : -rowHeight - 8)
         .opacity(isVisible ? 1 : 0)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityText)
