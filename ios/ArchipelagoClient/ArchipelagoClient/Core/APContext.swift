@@ -342,7 +342,6 @@ final class APContext: ObservableObject {
             slotConcernsSelf: slotConcernsSelf
         )
         appendLog(renderer.render(parts), parts: parts)
-        APNotificationService.shared.notifyChat(args: args, context: self)
     }
 
     func onPrint(_ args: [String: Any]) {
@@ -506,6 +505,7 @@ final class APContext: ObservableObject {
     private func disconnectAsync(allowAutoreconnect: Bool = false) async {
         if !allowAutoreconnect {
             disconnectedIntentionally = true
+            APNotificationService.shared.clearBackgroundDisconnectState()
             reconnectTask?.cancel()
             reconnectTask = nil
         }
@@ -576,6 +576,11 @@ final class APContext: ObservableObject {
         if !disconnectedIntentionally, !serverAddress.isEmpty, wasJoined {
             scheduleReconnect()
         }
+
+        APNotificationService.shared.notifyDisconnectedDueToBackground(
+            wasJoined: wasJoined,
+            intentional: disconnectedIntentionally
+        )
     }
 
     private func scheduleReconnect() {
