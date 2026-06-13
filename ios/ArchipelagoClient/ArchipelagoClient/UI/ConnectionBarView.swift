@@ -53,60 +53,34 @@ struct ConnectionBookmarkChipsView: View {
     @ObservedObject var viewModel: AppViewModel
     @ObservedObject private var bookmarkStore: ConnectionBookmarkStore
 
-    @State private var showCreateSheet = false
-
     init(viewModel: AppViewModel) {
         self.viewModel = viewModel
         self._bookmarkStore = ObservedObject(wrappedValue: viewModel.bookmarkStore)
     }
 
     var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8) {
-                ForEach(bookmarkStore.bookmarks) { bookmark in
-                    Button {
-                        viewModel.loadBookmark(bookmark)
-                    } label: {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(bookmark.name)
-                                .font(.caption.weight(.medium))
-                                .lineLimit(1)
-                            Text(bookmark.subtitle)
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                                .lineLimit(1)
+        if !bookmarkStore.bookmarks.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(bookmarkStore.bookmarks) { bookmark in
+                        Button {
+                            viewModel.loadBookmark(bookmark)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(bookmark.name)
+                                    .font(.caption.weight(.medium))
+                                    .lineLimit(1)
+                                Text(bookmark.subtitle)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
                         }
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
+                        .buttonStyle(.bordered)
                     }
-                    .buttonStyle(.bordered)
                 }
-
-                Button {
-                    showCreateSheet = true
-                } label: {
-                    Image(systemName: "plus")
-                        .font(.caption.weight(.semibold))
-                        .frame(width: 28, height: 28)
-                }
-                .buttonStyle(.bordered)
-                .accessibilityLabel("Save bookmark")
-            }
-        }
-        .sheet(isPresented: $showCreateSheet) {
-            ConnectionBookmarkEditorView(
-                mode: .create,
-                initialName: viewModel.suggestedBookmarkName(),
-                initialServerAddress: viewModel.currentServerAddress(),
-                initialSlotName: viewModel.currentSlotName(),
-                initialPassword: viewModel.currentPassword() ?? ""
-            ) { name, serverAddress, slotName, password in
-                viewModel.saveBookmark(
-                    name: name,
-                    serverAddress: serverAddress,
-                    slotName: slotName,
-                    password: password
-                )
             }
         }
     }
