@@ -25,12 +25,14 @@
 		AA0000010000000000000010 /* CommandInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000010 /* CommandInputView.swift */; };
 		AA0000010000000000000011 /* HintsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000011 /* HintsView.swift */; };
 		AA0000010000000000000012 /* JSONMessageRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000012 /* JSONMessageRenderer.swift */; };
+		AA000001000000000000002A /* APArchipelagoColors.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000101000000000000002A /* APArchipelagoColors.swift */; };
 		AA0000010000000000000013 /* archipelago_datapackage.json in Resources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000013 /* archipelago_datapackage.json */; };
 		AA0000010000000000000014 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000014 /* Assets.xcassets */; };
 		AA0000010000000000000020 /* APCodecTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000020 /* APCodecTests.swift */; };
 		AA0000010000000000000021 /* ServerURLParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000021 /* ServerURLParserTests.swift */; };
 		AA0000010000000000000022 /* DataPackageChecksumTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000022 /* DataPackageChecksumTests.swift */; };
 		AA0000010000000000000029 /* NameLookupTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000029 /* NameLookupTests.swift */; };
+		AA000001000000000000002B /* JSONMessageRendererTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA000101000000000000002B /* JSONMessageRendererTests.swift */; };
 		AA0000010000000000000028 /* APWSCompression.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000028 /* APWSCompression.swift */; };
 /* End PBXBuildFile section */
 
@@ -53,6 +55,7 @@
 		AA0001010000000000000010 /* CommandInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandInputView.swift; sourceTree = "<group>"; };
 		AA0001010000000000000011 /* HintsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HintsView.swift; sourceTree = "<group>"; };
 		AA0001010000000000000012 /* JSONMessageRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONMessageRenderer.swift; sourceTree = "<group>"; };
+		AA000101000000000000002A /* APArchipelagoColors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APArchipelagoColors.swift; sourceTree = "<group>"; };
 		AA0001010000000000000013 /* archipelago_datapackage.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = archipelago_datapackage.json; sourceTree = "<group>"; };
 		AA0001010000000000000014 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		AA0001010000000000000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -60,6 +63,7 @@
 		AA0001010000000000000021 /* ServerURLParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerURLParserTests.swift; sourceTree = "<group>"; };
 		AA0001010000000000000022 /* DataPackageChecksumTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataPackageChecksumTests.swift; sourceTree = "<group>"; };
 		AA0001010000000000000029 /* NameLookupTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NameLookupTests.swift; sourceTree = "<group>"; };
+		AA000101000000000000002B /* JSONMessageRendererTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JSONMessageRendererTests.swift; sourceTree = "<group>"; };
 		AA0001010000000000000028 /* APWSCompression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APWSCompression.swift; sourceTree = "<group>"; };
 		AA0002010000000000000001 /* ArchipelagoClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArchipelagoClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA0002010000000000000002 /* ArchipelagoClientTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ArchipelagoClientTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -116,6 +120,7 @@
 				AA0001010000000000000021 /* ServerURLParserTests.swift */,
 				AA0001010000000000000022 /* DataPackageChecksumTests.swift */,
 				AA0001010000000000000029 /* NameLookupTests.swift */,
+				AA000101000000000000002B /* JSONMessageRendererTests.swift */,
 			);
 			path = ArchipelagoClientTests;
 			sourceTree = "<group>";
@@ -193,6 +198,7 @@
 				AA0001010000000000000010 /* CommandInputView.swift */,
 				AA0001010000000000000011 /* HintsView.swift */,
 				AA0001010000000000000012 /* JSONMessageRenderer.swift */,
+				AA000101000000000000002A /* APArchipelagoColors.swift */,
 			);
 			path = UI;
 			sourceTree = "<group>";
@@ -322,6 +328,7 @@
 				AA0000010000000000000010 /* CommandInputView.swift in Sources */,
 				AA0000010000000000000011 /* HintsView.swift in Sources */,
 				AA0000010000000000000012 /* JSONMessageRenderer.swift in Sources */,
+				AA000001000000000000002A /* APArchipelagoColors.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,6 +340,7 @@
 				AA0000010000000000000021 /* ServerURLParserTests.swift in Sources */,
 				AA0000010000000000000022 /* DataPackageChecksumTests.swift in Sources */,
 				AA0000010000000000000029 /* NameLookupTests.swift in Sources */,
+				AA000001000000000000002B /* JSONMessageRendererTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

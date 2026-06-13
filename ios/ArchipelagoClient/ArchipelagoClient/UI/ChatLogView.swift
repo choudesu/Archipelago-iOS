@@ -15,9 +15,8 @@ struct ChatLogView: View {
                     }
 
                     ForEach(viewModel.context.chatLog) { entry in
-                        Text(renderedText(for: entry))
+                        messageView(for: entry)
                             .font(.system(.body, design: .monospaced))
-                            .foregroundStyle(entry.isCommandEcho ? .orange : .primary)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .id(entry.id)
                     }
@@ -34,17 +33,25 @@ struct ChatLogView: View {
         }
     }
 
-    private func renderedText(for entry: ChatLogEntry) -> String {
+    @ViewBuilder
+    private func messageView(for entry: ChatLogEntry) -> some View {
         if entry.attributedParts.isEmpty {
-            return entry.text
+            Text(entry.text)
+                .foregroundStyle(entry.isCommandEcho ? .orange : .primary)
+        } else {
+            Text(renderedMessage(for: entry))
         }
+    }
+
+    private func renderedMessage(for entry: ChatLogEntry) -> AttributedString {
         let context = viewModel.context
         let renderer = JSONMessageRenderer(
             playerNames: context.playerNames,
             nameLookup: context.nameLookup,
             slot: context.slot,
-            slotInfo: context.slotInfo
+            slotInfo: context.slotInfo,
+            slotConcernsSelf: context.slotConcernsSelf
         )
-        return renderer.render(entry.attributedParts)
+        return renderer.renderAttributed(entry.attributedParts)
     }
 }

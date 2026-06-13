@@ -338,7 +338,8 @@ final class APContext: ObservableObject {
             playerNames: playerNames,
             nameLookup: nameLookup,
             slot: slot,
-            slotInfo: slotInfo
+            slotInfo: slotInfo,
+            slotConcernsSelf: slotConcernsSelf
         )
         appendLog(renderer.render(parts), parts: parts)
     }
