@@ -24,7 +24,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         if Persistence.deathLinkEnabled {
             context.tags.insert("DeathLink")
         }
-        context.appendLog("Archipelago iOS client ready. Enter a server address and tap Connect.")
+        context.appendLog("Applepelago ready. Enter a server address and tap Connect.")
     }
 
     func connect() {

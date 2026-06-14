@@ -1,6 +1,6 @@
-# Archipelago iOS Text Client
+# Applepelago
 
-Native Swift/SwiftUI port of Archipelago's Python text client ([`CommonClient.py`](../../CommonClient.py) `run_as_textclient` + [`kvui.py`](../../kvui.py)).
+Native Swift/SwiftUI Archipelago text client ([`CommonClient.py`](../../CommonClient.py) `run_as_textclient` + [`kvui.py`](../../kvui.py)).
 
 ## Requirements
 

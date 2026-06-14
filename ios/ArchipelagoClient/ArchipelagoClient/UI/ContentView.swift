@@ -43,7 +43,7 @@ struct ContentView: View {
                     dismissKeyboard()
                 }
             }
-            .navigationTitle("Archipelago \(APVersion.clientVersion.simpleString)")
+            .navigationTitle("Applepelago \(APVersion.clientVersion.simpleString)")
             .navigationBarTitleDisplayMode(.inline)
             .alert(viewModel.errorTitle ?? "Error", isPresented: $viewModel.showError) {
                 Button("OK", role: .cancel) {}

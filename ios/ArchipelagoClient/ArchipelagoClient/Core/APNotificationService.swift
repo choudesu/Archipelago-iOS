@@ -107,7 +107,7 @@ final class APNotificationService {
 
     private func scheduleDisconnectNotification() {
         let content = UNMutableNotificationContent()
-        content.title = "Disconnected from Archipelago"
+        content.title = "Disconnected from Applepelago"
         content.body = "The app was closed or backgrounded. Reopen to reconnect to the multiworld."
         content.sound = .default
 

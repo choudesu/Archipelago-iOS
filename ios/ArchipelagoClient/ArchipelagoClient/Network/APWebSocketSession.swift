@@ -39,7 +39,7 @@ final class APWebSocketSession: WebSocketDelegate {
 
         var request = URLRequest(url: url)
         request.timeoutInterval = timeout
-        request.setValue("Archipelago-iOS", forHTTPHeaderField: "User-Agent")
+        request.setValue("Applepelago-iOS", forHTTPHeaderField: "User-Agent")
 
         let compression = APWSCompression()
         let webSocket = WebSocket(request: request, compressionHandler: compression)
