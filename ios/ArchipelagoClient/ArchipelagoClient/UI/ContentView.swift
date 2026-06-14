@@ -86,6 +86,8 @@ struct SettingsView: View {
     @AppStorage(Persistence.notificationsEnabledKey) private var notificationsEnabled = false
     @AppStorage(Persistence.connectionBookmarkChipsEnabledKey) private var bookmarkChipsEnabled = true
     @State private var deathLinkEnabled = Persistence.deathLinkEnabled
+    @State private var requestBookmarkExport = false
+    @State private var requestBookmarkImport = false
 
     var body: some View {
         Form {
@@ -110,7 +112,14 @@ struct SettingsView: View {
             }
             Section("Connection Bookmarks") {
                 Toggle("Quick-access chips", isOn: $bookmarkChipsEnabled)
-                Text("Show bookmark chips below the connection bar when disconnected. Manage bookmarks on the Bookmarks tab.")
+                Button("Export Bookmarks") {
+                    requestBookmarkExport = true
+                }
+                .disabled(viewModel.bookmarkStore.bookmarks.isEmpty)
+                Button("Import Bookmarks") {
+                    requestBookmarkImport = true
+                }
+                Text("Export or import bookmark presets as JSON. Exported files may include saved passwords.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -131,6 +140,11 @@ struct SettingsView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .connectionBookmarkTransferHandlers(
+            viewModel: viewModel,
+            exportRequest: $requestBookmarkExport,
+            importRequest: $requestBookmarkImport
+        )
     }
 }
 

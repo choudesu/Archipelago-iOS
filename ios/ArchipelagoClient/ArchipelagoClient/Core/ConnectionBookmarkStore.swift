@@ -58,6 +58,47 @@ final class ConnectionBookmarkStore: ObservableObject {
         save()
     }
 
+    func exportData(includePasswords: Bool = true) throws -> Data {
+        var passwords: [UUID: String] = [:]
+        if includePasswords {
+            for bookmark in bookmarks {
+                if let password = password(for: bookmark.id) {
+                    passwords[bookmark.id] = password
+                }
+            }
+        }
+        return try ConnectionBookmarkTransfer.encode(bookmarks, passwords: passwords)
+    }
+
+    @discardableResult
+    func importBookmarks(from data: Data, mode: ConnectionBookmarkImportMode) throws -> Int {
+        let items = try ConnectionBookmarkTransfer.decode(data)
+        let validItems = items.filter {
+            !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !$0.serverAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+        guard !validItems.isEmpty else {
+            throw ConnectionBookmarkTransferError.empty
+        }
+
+        if mode == .replace {
+            let existing = bookmarks
+            for bookmark in existing {
+                delete(bookmark)
+            }
+        }
+
+        for item in validItems {
+            _ = add(
+                name: item.name,
+                serverAddress: item.serverAddress,
+                slotName: item.slotName,
+                password: item.password
+            )
+        }
+        return validItems.count
+    }
+
     func password(for id: UUID) -> String? {
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,

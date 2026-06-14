@@ -42,6 +42,9 @@
 		AA0000010000000000000033 /* ConnectionBookmarkEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000033 /* ConnectionBookmarkEditorView.swift */; };
 		AA0000010000000000000035 /* ConnectionBookmarksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000035 /* ConnectionBookmarksView.swift */; };
 		AA0000010000000000000036 /* HintStatus+UI.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000036 /* HintStatus+UI.swift */; };
+		AA0000010000000000000037 /* ConnectionBookmarkExport.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000037 /* ConnectionBookmarkExport.swift */; };
+		AA0000010000000000000038 /* ConnectionBookmarksDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000038 /* ConnectionBookmarksDocument.swift */; };
+		AA0000010000000000000039 /* ConnectionBookmarkTransferHandlers.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000039 /* ConnectionBookmarkTransferHandlers.swift */; };
 		AA0000010000000000000034 /* ConnectionBookmarkStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000034 /* ConnectionBookmarkStoreTests.swift */; };
 		AA0000010000000000000028 /* APWSCompression.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0001010000000000000028 /* APWSCompression.swift */; };
 /* End PBXBuildFile section */
@@ -83,6 +86,9 @@
 		AA0001010000000000000033 /* ConnectionBookmarkEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarkEditorView.swift; sourceTree = "<group>"; };
 		AA0001010000000000000035 /* ConnectionBookmarksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarksView.swift; sourceTree = "<group>"; };
 		AA0001010000000000000036 /* HintStatus+UI.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HintStatus+UI.swift"; sourceTree = "<group>"; };
+		AA0001010000000000000037 /* ConnectionBookmarkExport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarkExport.swift; sourceTree = "<group>"; };
+		AA0001010000000000000038 /* ConnectionBookmarksDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarksDocument.swift; sourceTree = "<group>"; };
+		AA0001010000000000000039 /* ConnectionBookmarkTransferHandlers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarkTransferHandlers.swift; sourceTree = "<group>"; };
 		AA0001010000000000000034 /* ConnectionBookmarkStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConnectionBookmarkStoreTests.swift; sourceTree = "<group>"; };
 		AA0001010000000000000028 /* APWSCompression.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APWSCompression.swift; sourceTree = "<group>"; };
 		AA0002010000000000000001 /* ArchipelagoClient.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArchipelagoClient.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -195,6 +201,7 @@
 			children = (
 				AA0001010000000000000009 /* APModels.swift */,
 				AA0001010000000000000031 /* ConnectionBookmark.swift */,
+				AA0001010000000000000037 /* ConnectionBookmarkExport.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -228,6 +235,8 @@
 				AA000101000000000000002A /* APArchipelagoColors.swift */,
 				AA0001010000000000000033 /* ConnectionBookmarkEditorView.swift */,
 				AA0001010000000000000035 /* ConnectionBookmarksView.swift */,
+				AA0001010000000000000038 /* ConnectionBookmarksDocument.swift */,
+				AA0001010000000000000039 /* ConnectionBookmarkTransferHandlers.swift */,
 				AA0001010000000000000036 /* HintStatus+UI.swift */,
 			);
 			path = UI;
@@ -365,6 +374,9 @@
 				AA0000010000000000000032 /* ConnectionBookmarkStore.swift in Sources */,
 				AA0000010000000000000033 /* ConnectionBookmarkEditorView.swift in Sources */,
 				AA0000010000000000000035 /* ConnectionBookmarksView.swift in Sources */,
+				AA0000010000000000000037 /* ConnectionBookmarkExport.swift in Sources */,
+				AA0000010000000000000038 /* ConnectionBookmarksDocument.swift in Sources */,
+				AA0000010000000000000039 /* ConnectionBookmarkTransferHandlers.swift in Sources */,
 				AA0000010000000000000036 /* HintStatus+UI.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

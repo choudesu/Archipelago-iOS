@@ -131,6 +131,45 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         bookmarkStore.delete(bookmark)
     }
 
+    func makeExportDocument() throws -> ConnectionBookmarksDocument {
+        guard !bookmarkStore.bookmarks.isEmpty else {
+            throw ConnectionBookmarkTransferError.nothingToExport
+        }
+        return ConnectionBookmarksDocument(data: try bookmarkStore.exportData())
+    }
+
+    func readBookmarkImportData(from url: URL) throws -> Data {
+        let accessed = url.startAccessingSecurityScopedResource()
+        defer {
+            if accessed {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+        return try Data(contentsOf: url)
+    }
+
+    func countImportableBookmarks(in data: Data) throws -> Int {
+        let items = try ConnectionBookmarkTransfer.decode(data)
+        return items.filter { item in
+            !item.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !item.serverAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }.count
+    }
+
+    @discardableResult
+    func importBookmarks(data: Data, replace: Bool) throws -> Int {
+        try bookmarkStore.importBookmarks(
+            from: data,
+            mode: replace ? .replace : .merge
+        )
+    }
+
+    func presentError(_ title: String, _ message: String) {
+        errorTitle = title
+        errorMessage = message
+        showError = true
+    }
+
     func submitInput() {
         let text = commandText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }

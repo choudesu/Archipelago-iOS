@@ -7,6 +7,8 @@ struct ConnectionBookmarksView: View {
     @State private var showCreateSheet = false
     @State private var editingBookmark: ConnectionBookmark?
     @State private var editMode: EditMode = .inactive
+    @State private var requestExport = false
+    @State private var requestImport = false
 
     init(viewModel: AppViewModel) {
         self.viewModel = viewModel
@@ -30,6 +32,22 @@ struct ConnectionBookmarksView: View {
                     Image(systemName: "plus")
                 }
                 .accessibilityLabel("Save bookmark")
+                Menu {
+                    Button {
+                        requestExport = true
+                    } label: {
+                        Label("Export Bookmarks", systemImage: "square.and.arrow.up")
+                    }
+                    .disabled(bookmarkStore.bookmarks.isEmpty)
+                    Button {
+                        requestImport = true
+                    } label: {
+                        Label("Import Bookmarks", systemImage: "square.and.arrow.down")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .accessibilityLabel("Bookmark actions")
             }
             .padding(.horizontal)
             .padding(.bottom, 8)
@@ -104,6 +122,11 @@ struct ConnectionBookmarksView: View {
                 )
             }
         }
+        .connectionBookmarkTransferHandlers(
+            viewModel: viewModel,
+            exportRequest: $requestExport,
+            importRequest: $requestImport
+        )
     }
 }
 
