@@ -14,13 +14,18 @@ struct ContentView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 12) {
+            VStack(spacing: 0) {
                 ConnectionBarView(viewModel: viewModel)
+                    .padding(.bottom, 8)
 
                 TabView(selection: $viewModel.selectedTab) {
-                    ChatLogView(viewModel: viewModel)
-                        .tabItem { Label("Log", systemImage: "text.bubble") }
-                        .tag(0)
+                    VStack(spacing: 0) {
+                        ChatLogView(viewModel: viewModel)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        CommandInputView(viewModel: viewModel)
+                    }
+                    .tabItem { Label("Log", systemImage: "text.bubble") }
+                    .tag(0)
 
                     HintsView(context: viewModel.context)
                         .tabItem { Label("Hints", systemImage: "lightbulb") }
@@ -37,8 +42,6 @@ struct ContentView: View {
                 .onChange(of: viewModel.selectedTab) { _, _ in
                     dismissKeyboard()
                 }
-
-                CommandInputView(viewModel: viewModel)
             }
             .navigationTitle("Archipelago \(APVersion.clientVersion.simpleString)")
             .navigationBarTitleDisplayMode(.inline)
