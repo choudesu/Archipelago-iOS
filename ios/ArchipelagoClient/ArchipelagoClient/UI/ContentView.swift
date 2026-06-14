@@ -84,6 +84,7 @@ struct SettingsView: View {
     @ObservedObject var viewModel: AppViewModel
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.defaultMode.rawValue
     @AppStorage(Persistence.notificationsEnabledKey) private var notificationsEnabled = false
+    @AppStorage(Persistence.connectionBookmarkChipsEnabledKey) private var bookmarkChipsEnabled = true
     @State private var deathLinkEnabled = Persistence.deathLinkEnabled
 
     var body: some View {

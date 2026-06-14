@@ -4,6 +4,7 @@ enum Persistence {
     private static let defaults = UserDefaults.standard
 
     static let notificationsEnabledKey = "ap.client.notifications.enabled"
+    static let connectionBookmarkChipsEnabledKey = "ap.client.connectionBookmarkChips.enabled"
 
     private enum Keys {
         static let clientUUID = "ap.client.uuid"
@@ -11,6 +12,7 @@ enum Persistence {
         static let lastSlotName = "ap.client.lastSlotName"
         static let deathLinkEnabled = "ap.client.deathLinkEnabled"
         static let notificationsEnabled = notificationsEnabledKey
+        static let connectionBookmarkChipsEnabled = connectionBookmarkChipsEnabledKey
     }
 
     static var clientUUID: String {

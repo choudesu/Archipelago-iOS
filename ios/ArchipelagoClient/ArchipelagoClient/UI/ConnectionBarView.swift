@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ConnectionBarView: View {
     @ObservedObject var viewModel: AppViewModel
+    @AppStorage(Persistence.connectionBookmarkChipsEnabledKey) private var bookmarkChipsEnabled = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
