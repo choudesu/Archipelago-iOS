@@ -108,6 +108,12 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            Section("Connection Bookmarks") {
+                Toggle("Quick-access chips", isOn: $bookmarkChipsEnabled)
+                Text("Show bookmark chips below the connection bar when disconnected. Manage bookmarks on the Bookmarks tab.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
             Section("Connection") {
                 Text("Client UUID: \(Persistence.clientUUID)")
                     .font(.caption)

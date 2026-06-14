@@ -41,7 +41,7 @@ struct ConnectionBarView: View {
                 .textFieldStyle(.roundedBorder)
             }
 
-            if !viewModel.context.isConnected {
+            if !viewModel.context.isConnected && bookmarkChipsEnabled {
                 ConnectionBookmarkChipsView(viewModel: viewModel)
             }
 
