@@ -88,7 +88,6 @@ struct SettingsView: View {
     @AppStorage(AppearanceMode.storageKey) private var appearanceModeRaw = AppearanceMode.defaultMode.rawValue
     @AppStorage(Persistence.notificationsEnabledKey) private var notificationsEnabled = false
     @AppStorage(Persistence.connectionBookmarkChipsEnabledKey) private var bookmarkChipsEnabled = true
-    @State private var deathLinkEnabled = Persistence.deathLinkEnabled
     @State private var requestBookmarkExport = false
     @State private var requestBookmarkImport = false
 
@@ -132,10 +131,11 @@ struct SettingsView: View {
                     .textSelection(.enabled)
             }
             Section("Features") {
-                Toggle("Death Link", isOn: $deathLinkEnabled)
-                    .onChange(of: deathLinkEnabled) { _, newValue in
-                        viewModel.context.updateDeathLink(newValue)
-                    }
+                Toggle("Death Link", isOn: .constant(false))
+                    .disabled(true)
+                Text("Secret future feature")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             Section("Help") {
                 Text(viewModel.commands.helpText())
