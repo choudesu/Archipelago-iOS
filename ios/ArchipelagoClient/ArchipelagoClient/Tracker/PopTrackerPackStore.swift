@@ -25,53 +25,17 @@ final class PopTrackerPackStore: ObservableObject {
         reloadActivePack()
     }
 
-    func importPack(from zipURL: URL) throws -> PopTrackerInstalledPack {
+    func importPack(from zipURL: URL) async throws -> PopTrackerInstalledPack {
         let accessed = zipURL.startAccessingSecurityScopedResource()
         defer {
             if accessed { zipURL.stopAccessingSecurityScopedResource() }
         }
 
-        let stagingURL = fileManager.temporaryDirectory
-            .appendingPathComponent("poptracker-import-\(UUID().uuidString)", isDirectory: true)
-        try fileManager.createDirectory(at: stagingURL, withIntermediateDirectories: true)
-        defer { try? fileManager.removeItem(at: stagingURL) }
+        let packsRoot = packsRootURL
+        let install = try await Task.detached(priority: .userInitiated) {
+            try PopTrackerPackInstaller.install(from: zipURL, packsRootURL: packsRoot)
+        }.value
 
-        var isDirectory: ObjCBool = false
-        if fileManager.fileExists(atPath: zipURL.path, isDirectory: &isDirectory), isDirectory.boolValue {
-            try copyPackDirectory(from: zipURL, to: stagingURL)
-        } else {
-            try ZipExtractor.extract(zipURL: zipURL, to: stagingURL)
-        }
-        let packRoot = try resolvePackRoot(in: stagingURL)
-        let manifestURL = packRoot.appendingPathComponent("manifest.json")
-        let manifestText = try String(contentsOf: manifestURL, encoding: .utf8)
-        let manifest = try JSONC.decode(PopTrackerManifest.self, from: manifestText)
-
-        let uid = manifest.packageUID.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !uid.isEmpty else {
-            throw PopTrackerPackError.installFailed("Pack is missing package_uid.")
-        }
-
-        let destination = packsRootURL.appendingPathComponent(uid, isDirectory: true)
-        if fileManager.fileExists(atPath: destination.path) {
-            try fileManager.removeItem(at: destination)
-        }
-        try fileManager.createDirectory(at: packsRootURL, withIntermediateDirectories: true)
-        if packRoot == stagingURL {
-            try fileManager.copyItem(at: stagingURL, to: destination)
-        } else {
-            try fileManager.createDirectory(at: destination, withIntermediateDirectories: true)
-            try copyPackDirectory(from: packRoot, to: destination)
-        }
-
-        let install = PopTrackerInstalledPack(
-            packageUID: uid,
-            name: manifest.name,
-            gameName: manifest.gameName.trimmingCharacters(in: .whitespacesAndNewlines),
-            packageVersion: manifest.packageVersion,
-            installedAt: Date(),
-            variants: Array(manifest.variants.keys).sorted()
-        )
         upsertInstalledPack(install)
         saveIndex()
         return install
@@ -173,36 +137,5 @@ final class PopTrackerPackStore: ObservableObject {
         try? fileManager.createDirectory(at: packsRootURL, withIntermediateDirectories: true)
         guard let data = try? JSONEncoder().encode(installedPacks) else { return }
         try? data.write(to: indexURL, options: .atomic)
-    }
-
-    private func copyPackDirectory(from source: URL, to destination: URL) throws {
-        let contents = try fileManager.contentsOfDirectory(at: source, includingPropertiesForKeys: nil)
-        for item in contents {
-            let target = destination.appendingPathComponent(item.lastPathComponent)
-            try fileManager.copyItem(at: item, to: target)
-        }
-    }
-
-    private func resolvePackRoot(in stagingURL: URL) throws -> URL {
-        let manifestAtRoot = stagingURL.appendingPathComponent("manifest.json")
-        if fileManager.fileExists(atPath: manifestAtRoot.path) {
-            return stagingURL
-        }
-
-        let contents = try fileManager.contentsOfDirectory(
-            at: stagingURL,
-            includingPropertiesForKeys: [.isDirectoryKey],
-            options: [.skipsHiddenFiles]
-        )
-        for item in contents {
-            let isDirectory = (try? item.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
-            guard isDirectory else { continue }
-            let manifestURL = item.appendingPathComponent("manifest.json")
-            if fileManager.fileExists(atPath: manifestURL.path) {
-                return item
-            }
-        }
-
-        throw PopTrackerPackError.missingManifest
     }
 }

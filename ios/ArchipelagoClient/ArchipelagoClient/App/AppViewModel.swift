@@ -49,12 +49,24 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         }
     }
 
-    func importPopTrackerPack(from url: URL) throws {
-        let install = try packStore.importPack(from: url)
-        try packStore.setActivePack(uid: install.packageUID)
-        packStore.applyPackToContext(context)
-        if Persistence.clientMode != .tracker {
-            setClientMode(.tracker)
+    func importPopTrackerPack(from url: URL) async {
+        do {
+            let install = try await packStore.importPack(from: url)
+            try applyImportedPack(install)
+        } catch {
+            presentError("Import Failed", error.localizedDescription)
+        }
+    }
+
+    private func applyImportedPack(_ install: PopTrackerInstalledPack) throws {
+        var transaction = Transaction()
+        transaction.disablesAnimations = true
+        try withTransaction(transaction) {
+            try packStore.setActivePack(uid: install.packageUID)
+            packStore.applyPackToContext(context)
+            if Persistence.clientMode != .tracker {
+                setClientMode(.tracker)
+            }
         }
     }
 

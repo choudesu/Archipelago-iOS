@@ -29,10 +29,8 @@ struct PopTrackerPackTransferHandlers: ViewModifier {
             viewModel.presentError("Import Failed", error.localizedDescription)
         case .success(let urls):
             guard let url = urls.first else { return }
-            do {
-                try viewModel.importPopTrackerPack(from: url)
-            } catch {
-                viewModel.presentError("Import Failed", error.localizedDescription)
+            Task {
+                await viewModel.importPopTrackerPack(from: url)
             }
         }
     }
