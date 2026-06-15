@@ -152,6 +152,27 @@ final class ConnectionSessionManager: ObservableObject {
         }
     }
 
+    func applyConnectedIdentity(from context: APContext) {
+        guard let index = sessions.firstIndex(where: { $0.id == context.sessionID }) else { return }
+        var session = sessions[index]
+        let address = context.displayAddress.isEmpty ? context.serverAddress : context.displayAddress
+        session.serverAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        session.slotName = context.slotName
+        let connectedName = context.slotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !connectedName.isEmpty {
+            session.label = connectedName
+        }
+        sessions[index] = session
+        saveSessions()
+        if context.sessionID == primarySessionID {
+            syncPrimaryBackgroundCredentials(from: context)
+        }
+        if context.sessionID == activeSessionID {
+            Persistence.lastServerAddress = session.serverAddress
+            Persistence.lastSlotName = session.slotName
+        }
+    }
+
     func syncPrimaryBackgroundCredentials(from context: APContext? = nil) {
         let context = context ?? primaryContext
         let address = context.displayAddress.isEmpty ? context.serverAddress : context.displayAddress

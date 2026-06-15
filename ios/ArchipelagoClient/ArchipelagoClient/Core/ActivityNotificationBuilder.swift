@@ -47,14 +47,16 @@ enum ActivityNotificationBuilder {
         item: NetworkItem,
         nameLookup: NameLookup,
         playerNames: [Int: String],
-        slotInfo: [Int: NetworkSlot]
+        slotInfo: [Int: NetworkSlot],
+        sessionLabel: String? = nil
     ) -> ActivityEvent {
         let itemName = nameLookup.lookupItemInSlot(item.item, slot: item.player, slotInfo: slotInfo)
         let locationName = nameLookup.lookupLocationInSlot(item.location, slot: item.player, slotInfo: slotInfo)
         let sender = playerNames[item.player] ?? "Player \(item.player)"
+        let title = sessionLabel.map { "Item Received · \($0)" } ?? "Item Received"
         return ActivityEvent(
             kind: .item,
-            title: "Item Received",
+            title: title,
             message: "\(itemName) from \(locationName) by \(sender)",
             dedupKey: itemDedupKey(item: item)
         )
@@ -64,7 +66,8 @@ enum ActivityNotificationBuilder {
         hint: HintEntry,
         nameLookup: NameLookup,
         playerNames: [Int: String],
-        slotInfo: [Int: NetworkSlot]
+        slotInfo: [Int: NetworkSlot],
+        sessionLabel: String? = nil
     ) -> ActivityEvent {
         let itemName = nameLookup.lookupItemInSlot(hint.item, slot: hint.receivingPlayer, slotInfo: slotInfo)
         let locationName = nameLookup.lookupLocationInSlot(hint.location, slot: hint.findingPlayer, slotInfo: slotInfo)
@@ -74,9 +77,10 @@ enum ActivityNotificationBuilder {
         if !hint.entrance.isEmpty {
             message += " · \(hint.entrance)"
         }
+        let title = sessionLabel.map { "New Hint · \($0)" } ?? "New Hint"
         return ActivityEvent(
             kind: .hint,
-            title: "New Hint",
+            title: title,
             message: message,
             dedupKey: hintKey(for: hint)
         )
@@ -91,7 +95,8 @@ enum ActivityNotificationBuilder {
         entrance: String,
         nameLookup: NameLookup,
         playerNames: [Int: String],
-        slotInfo: [Int: NetworkSlot]
+        slotInfo: [Int: NetworkSlot],
+        sessionLabel: String? = nil
     ) -> ActivityEvent {
         let hint = HintEntry(from: [
             "receiving_player": receivingPlayer,
@@ -107,7 +112,8 @@ enum ActivityNotificationBuilder {
             hint: hint,
             nameLookup: nameLookup,
             playerNames: playerNames,
-            slotInfo: slotInfo
+            slotInfo: slotInfo,
+            sessionLabel: sessionLabel
         )
     }
 }

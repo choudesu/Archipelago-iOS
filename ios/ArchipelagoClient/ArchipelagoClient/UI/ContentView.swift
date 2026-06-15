@@ -27,7 +27,7 @@ struct ContentView: View {
                     .tabItem { Label("Log", systemImage: "text.bubble") }
                     .tag(0)
 
-                    HintsView(context: viewModel.context)
+                    HintsView(viewModel: viewModel)
                         .tabItem { Label("Hints", systemImage: "lightbulb") }
                         .tag(1)
 

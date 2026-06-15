@@ -38,6 +38,21 @@ final class ConnectionSessionManagerTests: XCTestCase {
         XCTAssertNotEqual(manager.context(for: first.id)?.sessionID, manager.activeContext.sessionID)
     }
 
+    func testApplyConnectedIdentityRenamesSessionLabel() {
+        let session = ConnectionSession(label: "Slot 2", serverAddress: "host:38281", slotName: "PlayerB")
+        Persistence.saveConnectionSessions([session])
+        Persistence.activeConnectionSessionID = session.id
+
+        let manager = ConnectionSessionManager()
+        let context = manager.activeContext
+        context.displayAddress = "host:38281"
+        context.setSlotName("PlayerB")
+
+        manager.applyConnectedIdentity(from: context)
+
+        XCTAssertEqual(manager.sessions[0].label, "PlayerB")
+    }
+
     func testRemoveSessionFallsBackToRemainingSession() {
         let first = ConnectionSession(label: "A")
         let second = ConnectionSession(label: "B")

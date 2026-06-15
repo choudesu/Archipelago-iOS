@@ -1,15 +1,42 @@
 import SwiftUI
 
+private struct SessionHintRow: Identifiable {
+    let id: String
+    let hint: HintEntry
+    let context: APContext
+    let sessionLabel: String
+}
+
 struct HintsView: View {
-    @ObservedObject var context: APContext
+    @ObservedObject var viewModel: AppViewModel
     @Environment(\.colorScheme) private var colorScheme
     @State private var hintQuery = ""
 
+    private var mergedHints: [SessionHintRow] {
+        var rows: [SessionHintRow] = []
+        for session in viewModel.sessionManager.sessions {
+            guard let context = viewModel.sessionManager.context(for: session.id) else { continue }
+            for hint in context.hints {
+                rows.append(SessionHintRow(
+                    id: "\(session.id.uuidString)-\(hint.id)",
+                    hint: hint,
+                    context: context,
+                    sessionLabel: session.label
+                ))
+            }
+        }
+        return rows
+    }
+
+    private var showsSessionLabels: Bool {
+        viewModel.sessionManager.sessions.count > 1
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            HintInputView(context: context, query: $hintQuery)
+            HintInputView(context: viewModel.context, query: $hintQuery)
 
-            if context.hints.isEmpty {
+            if mergedHints.isEmpty {
                 ContentUnavailableView(
                     "No Hints",
                     systemImage: "lightbulb",
@@ -17,18 +44,19 @@ struct HintsView: View {
                 )
                 .frame(maxHeight: .infinity)
             } else {
-                List(context.hints) { hint in
+                List(mergedHints) { row in
                     HintRowView(
-                        hint: hint,
-                        canEdit: context.canUpdateHint(hint),
-                        itemName: itemName(for: hint),
-                        locationName: locationName(for: hint),
-                        findingPlayer: playerName(hint.findingPlayer),
-                        receivingPlayer: playerName(hint.receivingPlayer),
+                        hint: row.hint,
+                        canEdit: row.context.canUpdateHint(row.hint),
+                        itemName: itemName(for: row.hint, context: row.context),
+                        locationName: locationName(for: row.hint, context: row.context),
+                        findingPlayer: playerName(row.hint.findingPlayer, context: row.context),
+                        receivingPlayer: playerName(row.hint.receivingPlayer, context: row.context),
+                        sessionLabel: showsSessionLabels ? row.sessionLabel : nil,
                         onStatusChange: { status in
-                            context.updateHint(
-                                location: hint.location,
-                                findingPlayer: hint.findingPlayer,
+                            row.context.updateHint(
+                                location: row.hint.location,
+                                findingPlayer: row.hint.findingPlayer,
                                 status: status
                             )
                         }
@@ -41,15 +69,15 @@ struct HintsView: View {
         }
     }
 
-    private func itemName(for hint: HintEntry) -> String {
+    private func itemName(for hint: HintEntry, context: APContext) -> String {
         context.nameLookup.lookupItemInSlot(hint.item, slot: hint.receivingPlayer, slotInfo: context.slotInfo)
     }
 
-    private func locationName(for hint: HintEntry) -> String {
+    private func locationName(for hint: HintEntry, context: APContext) -> String {
         context.nameLookup.lookupLocationInSlot(hint.location, slot: hint.findingPlayer, slotInfo: context.slotInfo)
     }
 
-    private func playerName(_ slot: Int) -> String {
+    private func playerName(_ slot: Int, context: APContext) -> String {
         context.playerNames[slot] ?? "Player \(slot)"
     }
 }
@@ -63,6 +91,7 @@ private struct HintRowView: View {
     let locationName: String
     let findingPlayer: String
     let receivingPlayer: String
+    let sessionLabel: String?
     let onStatusChange: (HintStatus) -> Void
 
     private var palette: APArchipelagoColors.Palette {
@@ -78,6 +107,12 @@ private struct HintRowView: View {
             statusControl
 
             VStack(alignment: .leading, spacing: 6) {
+                if let sessionLabel {
+                    Text(sessionLabel)
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
                 Text(itemName)
                     .font(.headline)
                     .foregroundStyle(isFound ? .secondary : .primary)

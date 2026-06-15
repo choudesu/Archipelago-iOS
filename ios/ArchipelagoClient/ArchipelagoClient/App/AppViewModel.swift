@@ -81,7 +81,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         sessionManager.wireContext(
             context,
             delegate: self,
-            activityRouter: context.sessionID == activeSessionID ? activityRouter : nil,
+            activityRouter: activityRouter,
             commandProcessor: commands
         )
     }
@@ -91,7 +91,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         commands.bind(to: context)
         trackerBridge.bind(to: context)
         for sessionContext in sessionManager.contexts.values {
-            sessionContext.activityRouter = sessionContext.sessionID == activeSessionID ? activityRouter : nil
+            sessionContext.activityRouter = activityRouter
         }
         packStore.applyPackToContext(context)
         packStore.validateGameMatch(sessionGame: context.activeGameName)
@@ -354,7 +354,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func contextDidConnect(_ context: APContext) {
-        sessionManager.syncSessionMetadata(from: context)
+        sessionManager.applyConnectedIdentity(from: context)
         if context.sessionID == sessionManager.primarySessionID {
             sessionManager.syncPrimaryBackgroundCredentials(from: context)
         }

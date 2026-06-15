@@ -214,6 +214,11 @@ final class APContext: ObservableObject {
         (auth ?? username ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var notificationSessionLabel: String? {
+        let name = slotName
+        return name.isEmpty ? nil : name
+    }
+
     func slotConcernsSelf(_ slot: Int) -> Bool {
         guard let mySlot = self.slot else { return false }
         if slot == mySlot { return true }
@@ -365,7 +370,8 @@ final class APContext: ObservableObject {
                 item: item,
                 nameLookup: nameLookup,
                 playerNames: playerNames,
-                slotInfo: slotInfo
+                slotInfo: slotInfo,
+                sessionLabel: notificationSessionLabel
             )
             router.deliver(event)
         }
@@ -413,7 +419,8 @@ final class APContext: ObservableObject {
                 hint: hint,
                 nameLookup: nameLookup,
                 playerNames: playerNames,
-                slotInfo: slotInfo
+                slotInfo: slotInfo,
+                sessionLabel: notificationSessionLabel
             ))
         }
         persistActivitySnapshot()
@@ -467,7 +474,8 @@ final class APContext: ObservableObject {
             entrance: "",
             nameLookup: nameLookup,
             playerNames: playerNames,
-            slotInfo: slotInfo
+            slotInfo: slotInfo,
+            sessionLabel: notificationSessionLabel
         ))
         persistActivitySnapshot()
     }
