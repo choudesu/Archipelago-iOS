@@ -26,33 +26,15 @@ enum BackgroundRefreshTask {
             return
         }
 
-        _ = submitRefreshRequest(earliestInterval: earliestInterval ?? minimumInterval)
-    }
-
-    @discardableResult
-    static func scheduleForDebug(earliestInterval: TimeInterval = 5) -> Bool {
-        guard Persistence.debugModeEnabled else { return false }
-        return submitRefreshRequest(earliestInterval: earliestInterval)
-    }
-
-    @discardableResult
-    private static func submitRefreshRequest(earliestInterval: TimeInterval) -> Bool {
+        let interval = earliestInterval ?? minimumInterval
         let request = BGAppRefreshTaskRequest(identifier: identifier)
-        request.earliestBeginDate = Date(timeIntervalSinceNow: earliestInterval)
+        request.earliestBeginDate = Date(timeIntervalSinceNow: interval)
 
         do {
             try BGTaskScheduler.shared.submit(request)
-            return true
         } catch {
             NSLog("Could not schedule background refresh: \(error.localizedDescription)")
-            return false
         }
-    }
-
-    @MainActor
-    static func runSyncNow() async -> Bool {
-        let runner = BackgroundSyncRunner()
-        return await runner.run()
     }
 
     @MainActor

@@ -27,13 +27,13 @@ final class APNotificationServiceTests: XCTestCase {
 
     func testForegroundWhileConnectedClearsBackgroundState() {
         APNotificationService.shared.handleEnterBackground(joined: true, connected: true)
-        APNotificationService.shared.handleEnterForeground(stillConnected: true)
+        APNotificationService.shared.handleEnterForeground()
         XCTAssertFalse(APNotificationService.shared.leftAppWhileJoined)
     }
 
     func testForegroundWhileDisconnectedClearsBackgroundState() {
         APNotificationService.shared.handleEnterBackground(joined: true, connected: true)
-        APNotificationService.shared.handleEnterForeground(stillConnected: false)
+        APNotificationService.shared.handleEnterForeground()
         XCTAssertFalse(APNotificationService.shared.leftAppWhileJoined)
     }
 

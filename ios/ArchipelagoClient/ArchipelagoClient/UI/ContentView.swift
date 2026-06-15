@@ -74,7 +74,7 @@ struct ContentView: View {
                 BackgroundRefreshTask.schedule()
             case .active:
                 BackgroundSessionManager.shared.endBackgroundGracePeriod()
-                APNotificationService.shared.handleEnterForeground(stillConnected: connected)
+                APNotificationService.shared.handleEnterForeground()
             case .inactive:
                 break
             @unknown default:
@@ -177,8 +177,6 @@ struct SettingsView: View {
                 Text(viewModel.commands.helpText())
                     .font(.caption)
             }
-
-            DebugToolsView(viewModel: viewModel)
         }
         .scrollDismissesKeyboard(.interactively)
         .connectionBookmarkTransferHandlers(
