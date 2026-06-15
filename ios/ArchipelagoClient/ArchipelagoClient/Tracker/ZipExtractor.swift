@@ -100,24 +100,24 @@ enum ZipExtractor {
         }
     }
 
-    private static func inflate(_ data: Data, expectedSize: Int) throws -> Data {
+    private static func decompressDeflate(_ data: Data, expectedSize: Int) throws -> Data {
         var stream = z_stream()
         var status = data.withUnsafeBytes { inputBuffer -> Int32 in
             stream.next_in = UnsafeMutablePointer<Bytef>(mutating: inputBuffer.bindMemory(to: Bytef.self).baseAddress!)
             stream.avail_in = uInt(data.count)
-            return inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
+            return zlib.inflateInit2_(&stream, -MAX_WBITS, ZLIB_VERSION, Int32(MemoryLayout<z_stream>.size))
         }
         guard status == Z_OK else {
             throw PopTrackerPackError.installFailed("Could not initialize ZIP inflater.")
         }
-        defer { inflateEnd(&stream) }
+        defer { zlib.inflateEnd(&stream) }
 
         let capacity = max(expectedSize, data.count * 4)
         var output = Data(count: capacity)
         let decodedSize: Int = output.withUnsafeMutableBytes { outputBuffer in
             stream.next_out = outputBuffer.bindMemory(to: Bytef.self).baseAddress!
             stream.avail_out = uInt(capacity)
-            status = inflate(&stream, Z_FINISH)
+            status = zlib.inflate(&stream, Z_FINISH)
             return capacity - Int(stream.avail_out)
         }
         guard status == Z_STREAM_END || status == Z_OK, decodedSize > 0 else {
