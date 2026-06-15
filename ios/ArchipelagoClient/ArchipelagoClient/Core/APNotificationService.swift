@@ -131,4 +131,27 @@ final class APNotificationService {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: [Self.disconnectNotificationID])
     }
+
+    func scheduleActivityNotification(_ event: ActivityEvent) async {
+        guard Persistence.activityAlertsEnabled else { return }
+        guard await requestPermissionIfNeeded() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = event.title
+        content.body = event.message
+        content.sound = .default
+        content.categoryIdentifier = event.kind == .item ? "ACTIVITY_ITEM" : "ACTIVITY_HINT"
+
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: Self.minimumTriggerInterval,
+            repeats: false
+        )
+        let identifier = "activity.\(event.dedupKey)"
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                NSLog("Failed to schedule activity notification: \(error.localizedDescription)")
+            }
+        }
+    }
 }

@@ -8,6 +8,7 @@ protocol APContextDelegate: AnyObject {
     func contextNeedsUserInput(_ context: APContext, prompt: String) async -> String
     func contextDidUpdateHints(_ context: APContext)
     func contextDidUpdateProgress(_ context: APContext)
+    func contextDidConnect(_ context: APContext)
 }
 
 @MainActor
@@ -59,6 +60,10 @@ final class APContext: ObservableObject {
     var lastDeathLink: TimeInterval = Date().timeIntervalSince1970
 
     let nameLookup = NameLookup()
+
+    weak var activityRouter: ActivityNotificationRouter?
+    var seenHintKeys: Set<String> = []
+    private var hintsActivitySeeded = false
 
     @Published private(set) var chatLog: [ChatLogEntry] = []
     @Published private(set) var hints: [HintEntry] = []
@@ -244,14 +249,137 @@ final class APContext: ObservableObject {
             hints = []
             return
         }
+        let previousHints = hints
         let key = "_read_hints_\(team)_\(slot)"
         if let raw = storedData[key] as? [[String: Any]] {
             hints = raw.map { HintEntry(from: $0) }
         } else {
             hints = []
         }
+
+        if !hintsActivitySeeded {
+            seedHintActivityKeys()
+            hintsActivitySeeded = true
+        } else {
+            processNewHintsForActivity(previousHints: previousHints)
+        }
+
         objectWillChange.send()
         delegate?.contextDidUpdateHints(self)
+    }
+
+    func notifyNewItems(_ items: [NetworkItem], isBulkResync: Bool) {
+        guard !isBulkResync, let router = activityRouter else { return }
+        for item in items {
+            let event = ActivityNotificationBuilder.itemEvent(
+                item: item,
+                nameLookup: nameLookup,
+                playerNames: playerNames,
+                slotInfo: slotInfo
+            )
+            router.deliver(event)
+        }
+        persistActivitySnapshot()
+    }
+
+    func persistActivitySnapshot() {
+        let snapshot = ActivitySnapshot(
+            itemCount: itemsReceived.count,
+            seenHintKeys: Array(seenHintKeys).sorted(),
+            updatedAt: Date()
+        )
+        Persistence.saveActivitySnapshot(snapshot)
+    }
+
+    func persistBackgroundSessionCredentials() {
+        let address = displayAddress.isEmpty ? serverAddress : displayAddress
+        Persistence.saveBackgroundSessionCredentials(
+            serverAddress: address,
+            slotName: slotName,
+            password: password
+        )
+    }
+
+    private func seedHintActivityKeys() {
+        for hint in hints {
+            seenHintKeys.insert(ActivityNotificationBuilder.hintKey(for: hint))
+        }
+        persistActivitySnapshot()
+    }
+
+    private func processNewHintsForActivity(previousHints: [HintEntry]) {
+        guard let router = activityRouter else { return }
+        let previousKeys = Set(previousHints.map(ActivityNotificationBuilder.hintKey(for:)))
+        for hint in hints {
+            let key = ActivityNotificationBuilder.hintKey(for: hint)
+            guard !previousKeys.contains(key), !seenHintKeys.contains(key) else { continue }
+            guard ActivityNotificationBuilder.hintInvolvesSelf(
+                receivingPlayer: hint.receivingPlayer,
+                findingPlayer: hint.findingPlayer,
+                slotConcernsSelf: slotConcernsSelf
+            ) else { continue }
+            seenHintKeys.insert(key)
+            router.deliver(ActivityNotificationBuilder.hintEvent(
+                hint: hint,
+                nameLookup: nameLookup,
+                playerNames: playerNames,
+                slotInfo: slotInfo
+            ))
+        }
+        persistActivitySnapshot()
+    }
+
+    private func handlePrintJSONActivity(_ args: [String: Any]) {
+        guard args["type"] as? String == "Hint",
+              let router = activityRouter else { return }
+
+        let receiving = args["receiving"] as? Int ?? 0
+        let findingPlayer: Int
+        let itemID: Int
+        let locationID: Int
+        let itemFlags: Int
+
+        if let itemDict = args["item"] as? [String: Any] {
+            findingPlayer = itemDict["player"] as? Int ?? 0
+            itemID = itemDict["item"] as? Int ?? 0
+            locationID = itemDict["location"] as? Int ?? 0
+            itemFlags = itemDict["flags"] as? Int ?? 0
+        } else if let item = args["item"] as? NetworkItem {
+            findingPlayer = item.player
+            itemID = item.item
+            locationID = item.location
+            itemFlags = item.flags
+        } else {
+            return
+        }
+
+        guard ActivityNotificationBuilder.hintInvolvesSelf(
+            receivingPlayer: receiving,
+            findingPlayer: findingPlayer,
+            slotConcernsSelf: slotConcernsSelf
+        ) else { return }
+
+        let key = ActivityNotificationBuilder.hintDedupKey(
+            findingPlayer: findingPlayer,
+            location: locationID,
+            item: itemID,
+            receivingPlayer: receiving
+        )
+        guard !seenHintKeys.contains(key) else { return }
+        seenHintKeys.insert(key)
+
+        router.deliver(ActivityNotificationBuilder.hintEvent(
+            receivingPlayer: receiving,
+            findingPlayer: findingPlayer,
+            itemID: itemID,
+            locationID: locationID,
+            itemFlags: itemFlags,
+            entrance: "",
+            nameLookup: nameLookup,
+            playerNames: playerNames,
+            slotInfo: slotInfo
+        ))
+        persistActivitySnapshot()
     }
 
     func markConnectionRefusedHandled() {
@@ -294,6 +422,8 @@ final class APContext: ObservableObject {
             "collect": "disabled",
             "remaining": "disabled"
         ]
+        seenHintKeys = []
+        hintsActivitySeeded = false
     }
 
     func consumePlayersPackage(_ players: Any) {
@@ -483,6 +613,7 @@ final class APContext: ObservableObject {
             slotConcernsSelf: slotConcernsSelf
         )
         appendLog(renderer.render(parts), parts: parts)
+        handlePrintJSONActivity(args)
     }
 
     func onPrint(_ args: [String: Any]) {
