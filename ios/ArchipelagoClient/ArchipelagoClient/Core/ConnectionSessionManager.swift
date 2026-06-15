@@ -24,22 +24,35 @@ final class ConnectionSessionManager: ObservableObject {
 
     init() {
         let loaded = Persistence.loadConnectionSessions()
+        let resolvedSessions: [ConnectionSession]
+        let resolvedActive: UUID
+        let resolvedPrimary: UUID
+        let shouldSave: Bool
+
         if loaded.isEmpty {
             let migrated = Self.migrateLegacySession()
-            sessions = [migrated]
-            activeSessionID = migrated.id
-            primarySessionID = migrated.id
-            saveSessions()
+            resolvedSessions = [migrated]
+            resolvedActive = migrated.id
+            resolvedPrimary = migrated.id
+            shouldSave = true
         } else {
-            sessions = loaded
-            activeSessionID = Persistence.activeConnectionSessionID ?? loaded[0].id
-            primarySessionID = Persistence.primaryConnectionSessionID ?? activeSessionID
-            if sessions.first(where: { $0.id == activeSessionID }) == nil {
-                activeSessionID = sessions[0].id
-            }
-            if sessions.first(where: { $0.id == primarySessionID }) == nil {
-                primarySessionID = activeSessionID
-            }
+            resolvedSessions = loaded
+            let activeCandidate = Persistence.activeConnectionSessionID ?? loaded[0].id
+            resolvedActive = loaded.contains(where: { $0.id == activeCandidate })
+                ? activeCandidate
+                : loaded[0].id
+            let primaryCandidate = Persistence.primaryConnectionSessionID ?? resolvedActive
+            resolvedPrimary = loaded.contains(where: { $0.id == primaryCandidate })
+                ? primaryCandidate
+                : resolvedActive
+            shouldSave = false
+        }
+
+        sessions = resolvedSessions
+        activeSessionID = resolvedActive
+        primarySessionID = resolvedPrimary
+        if shouldSave {
+            saveSessions()
         }
         rebuildContexts()
     }
