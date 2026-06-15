@@ -9,6 +9,8 @@ protocol APContextDelegate: AnyObject {
     func contextDidUpdateHints(_ context: APContext)
     func contextDidUpdateProgress(_ context: APContext)
     func contextDidConnect(_ context: APContext)
+    func contextDidReceiveSlotData(_ context: APContext, slotData: [String: Any])
+    func contextDidUpdateCheckedLocations(_ context: APContext, locationIDs: Set<Int>)
 }
 
 @MainActor
@@ -42,9 +44,12 @@ final class APContext: ObservableObject {
         "remaining": "disabled"
     ]
 
-    var tags: Set<String> = ["AP", "TextOnly"]
+    var tags: Set<String> = ClientMode.text.tags
     var itemsHandling = 0b111
     var wantSlotData = false
+    var clientMode: ClientMode = .text
+    var trackerConnectGame: String = ""
+    var slotData: [String: Any] = [:]
 
     var slotInfo: [Int: NetworkSlot] = [0: NetworkSlot(name: "Archipelago", game: "Archipelago", type: SlotType.player.rawValue)]
     var playerNames: [Int: String] = [0: "Archipelago"]
@@ -113,6 +118,63 @@ final class APContext: ObservableObject {
             self.serverAddress = Persistence.lastServerAddress
             displayAddress = Persistence.lastServerAddress
         }
+        applyClientMode(Persistence.clientMode)
+        trackerConnectGame = Persistence.trackerConnectGame
+    }
+
+    func applyClientMode(_ mode: ClientMode) {
+        clientMode = mode
+        tags = mode.tags
+        wantSlotData = mode.wantsSlotData
+    }
+
+    func restorePendingLocationSync() {
+        guard let team, let slot else { return }
+        locationsChecked.formUnion(Persistence.loadPendingLocationChecks(slot: slot, team: team))
+        locationsScouted.formUnion(Persistence.loadPendingLocationScouts(slot: slot, team: team))
+    }
+
+    func persistPendingLocationSync() {
+        guard let team, let slot else { return }
+        Persistence.savePendingLocationChecks(locationsChecked, slot: slot, team: team)
+        Persistence.savePendingLocationScouts(locationsScouted, slot: slot, team: team)
+    }
+
+    @discardableResult
+    func checkLocations(_ ids: Set<Int>) async -> Set<Int> {
+        let newChecks = ids.intersection(missingLocations)
+        guard !newChecks.isEmpty else { return [] }
+        locationsChecked.formUnion(newChecks)
+        persistPendingLocationSync()
+        await sendMessages([
+            ["cmd": "LocationChecks", "locations": Array(newChecks).sorted()]
+        ])
+        return newChecks
+    }
+
+    @discardableResult
+    func scoutLocations(_ ids: Set<Int>, asHint: Bool) async -> Set<Int> {
+        let newScouts = ids.intersection(missingLocations)
+        guard !newScouts.isEmpty else { return [] }
+        locationsScouted.formUnion(newScouts)
+        persistPendingLocationSync()
+        await sendMessages([
+            [
+                "cmd": "LocationScouts",
+                "locations": Array(newScouts).sorted(),
+                "create_as_hint": asHint
+            ]
+        ])
+        return newScouts
+    }
+
+    func mergeCheckedLocations(_ locationIDs: Set<Int>) {
+        guard !locationIDs.isEmpty else { return }
+        checkedLocations.formUnion(locationIDs)
+        missingLocations.subtract(locationIDs)
+        locationsChecked.subtract(locationIDs)
+        persistPendingLocationSync()
+        delegate?.contextDidUpdateCheckedLocations(self, locationIDs: locationIDs)
     }
 
     func setSlotName(_ name: String?) {
@@ -424,6 +486,7 @@ final class APContext: ObservableObject {
         ]
         seenHintKeys = []
         hintsActivitySeeded = false
+        slotData = [:]
     }
 
     func consumePlayersPackage(_ players: Any) {
@@ -594,7 +657,7 @@ final class APContext: ObservableObject {
             "tags": Array(tags).sorted(),
             "items_handling": itemsHandling,
             "uuid": Persistence.clientUUID,
-            "game": "",
+            "game": clientMode == .tracker ? trackerConnectGame : "",
             "slot_data": wantSlotData
         ]
         for (key, value) in extra {

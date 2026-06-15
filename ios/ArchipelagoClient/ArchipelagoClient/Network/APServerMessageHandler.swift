@@ -178,6 +178,8 @@ final class APServerMessageHandler {
             context.storedDataNotificationKeys.insert("_read_hints_\(team)_\(slot)")
         }
 
+        context.restorePendingLocationSync()
+
         let activeGame: String
         if let slot = context.slot, let info = context.slotInfo[slot] {
             activeGame = info.game
@@ -219,6 +221,13 @@ final class APServerMessageHandler {
             context.checkedLocations = Set(checked)
         }
         context.serverLocations = context.missingLocations.union(context.checkedLocations)
+
+        if let slotData = args["slot_data"] as? [String: Any] {
+            context.slotData = slotData
+            context.delegate?.contextDidReceiveSlotData(context, slotData: slotData)
+        } else {
+            context.slotData = [:]
+        }
 
         context.markConnectSucceeded()
         context.connectionState = .connected
@@ -287,9 +296,7 @@ final class APServerMessageHandler {
             context.hintPoints = hintPoints
         }
         if let checked = args["checked_locations"] as? [Int] {
-            let checkedSet = Set(checked)
-            context.checkedLocations.formUnion(checkedSet)
-            context.missingLocations.subtract(checkedSet)
+            context.mergeCheckedLocations(Set(checked))
             context.delegate?.contextDidUpdateProgress(context)
         }
         if let permissions = args["permissions"] as? [String: Any] {

@@ -7,6 +7,8 @@ enum Persistence {
     static let activityAlertsEnabledKey = "ap.client.activityAlerts.enabled"
     static let backgroundSyncEnabledKey = "ap.client.backgroundSync.enabled"
     static let connectionBookmarkChipsEnabledKey = "ap.client.connectionBookmarkChips.enabled"
+    static let clientModeKey = "ap.client.mode"
+    static let trackerConnectGameKey = "ap.client.trackerConnectGame"
 
     private enum Keys {
         static let clientUUID = "ap.client.uuid"
@@ -17,6 +19,8 @@ enum Persistence {
         static let activityAlertsEnabled = activityAlertsEnabledKey
         static let backgroundSyncEnabled = backgroundSyncEnabledKey
         static let connectionBookmarkChipsEnabled = connectionBookmarkChipsEnabledKey
+        static let clientMode = clientModeKey
+        static let trackerConnectGame = trackerConnectGameKey
         static let lastActivitySnapshot = "ap.client.lastActivitySnapshot"
         static let backgroundSessionPassword = "ap.client.backgroundSession.password"
     }
@@ -68,6 +72,48 @@ enum Persistence {
             return defaults.bool(forKey: Keys.backgroundSyncEnabled)
         }
         set { defaults.set(newValue, forKey: Keys.backgroundSyncEnabled) }
+    }
+
+    static var clientMode: ClientMode {
+        get {
+            guard let raw = defaults.string(forKey: Keys.clientMode),
+                  let mode = ClientMode(rawValue: raw) else {
+                return .text
+            }
+            return mode
+        }
+        set { defaults.set(newValue.rawValue, forKey: Keys.clientMode) }
+    }
+
+    static var trackerConnectGame: String {
+        get { defaults.string(forKey: Keys.trackerConnectGame) ?? "" }
+        set { defaults.set(newValue, forKey: Keys.trackerConnectGame) }
+    }
+
+    static func pendingLocationChecksKey(slot: Int, team: Int) -> String {
+        "ap.pendingLocationChecks.\(team).\(slot)"
+    }
+
+    static func pendingLocationScoutsKey(slot: Int, team: Int) -> String {
+        "ap.pendingLocationScouts.\(team).\(slot)"
+    }
+
+    static func loadPendingLocationChecks(slot: Int, team: Int) -> Set<Int> {
+        let values = defaults.array(forKey: pendingLocationChecksKey(slot: slot, team: team)) as? [Int] ?? []
+        return Set(values)
+    }
+
+    static func savePendingLocationChecks(_ locations: Set<Int>, slot: Int, team: Int) {
+        defaults.set(Array(locations).sorted(), forKey: pendingLocationChecksKey(slot: slot, team: team))
+    }
+
+    static func loadPendingLocationScouts(slot: Int, team: Int) -> Set<Int> {
+        let values = defaults.array(forKey: pendingLocationScoutsKey(slot: slot, team: team)) as? [Int] ?? []
+        return Set(values)
+    }
+
+    static func savePendingLocationScouts(_ locations: Set<Int>, slot: Int, team: Int) {
+        defaults.set(Array(locations).sorted(), forKey: pendingLocationScoutsKey(slot: slot, team: team))
     }
 
     static var backgroundSessionPassword: String? {

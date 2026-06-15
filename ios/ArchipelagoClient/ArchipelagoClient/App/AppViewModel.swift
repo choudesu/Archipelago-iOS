@@ -28,10 +28,20 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         context.commandProcessor = self.commands
         context.delegate = self
         context.activityRouter = activityRouter
-        if Persistence.deathLinkEnabled {
+        context.applyClientMode(Persistence.clientMode)
+        context.trackerConnectGame = Persistence.trackerConnectGame
+        if Persistence.deathLinkEnabled, Persistence.clientMode == .text {
             context.tags.insert("DeathLink")
         }
         context.appendLog("Applepelago ready. Enter a server address and tap Connect.")
+    }
+
+    func setClientMode(_ mode: ClientMode) {
+        Persistence.clientMode = mode
+        context.applyClientMode(mode)
+        if Persistence.deathLinkEnabled {
+            context.tags.insert("DeathLink")
+        }
     }
 
     func connect() {
@@ -254,6 +264,14 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     func contextDidConnect(_ context: APContext) {
         objectWillChange.send()
         BackgroundRefreshTask.schedule()
+    }
+
+    func contextDidReceiveSlotData(_ context: APContext, slotData: [String: Any]) {
+        objectWillChange.send()
+    }
+
+    func contextDidUpdateCheckedLocations(_ context: APContext, locationIDs: Set<Int>) {
+        objectWillChange.send()
     }
 
     func submitPromptInput() {

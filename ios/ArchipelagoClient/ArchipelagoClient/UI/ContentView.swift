@@ -31,13 +31,17 @@ struct ContentView: View {
                         .tabItem { Label("Hints", systemImage: "lightbulb") }
                         .tag(1)
 
+                    TrackerTabView(viewModel: viewModel)
+                        .tabItem { Label("Tracker", systemImage: "map") }
+                        .tag(2)
+
                     ConnectionBookmarksView(viewModel: viewModel)
                         .tabItem { Label("Bookmarks", systemImage: "bookmark") }
-                        .tag(2)
+                        .tag(3)
 
                     SettingsView(viewModel: viewModel)
                         .tabItem { Label("Settings", systemImage: "gearshape") }
-                        .tag(3)
+                        .tag(4)
                 }
                 .onChange(of: viewModel.selectedTab) { _, _ in
                     dismissKeyboard()
@@ -104,6 +108,7 @@ struct SettingsView: View {
     @AppStorage(Persistence.activityAlertsEnabledKey) private var activityAlertsEnabled = true
     @AppStorage(Persistence.backgroundSyncEnabledKey) private var backgroundSyncEnabled = true
     @AppStorage(Persistence.connectionBookmarkChipsEnabledKey) private var bookmarkChipsEnabled = true
+    @AppStorage(Persistence.clientModeKey) private var clientModeRaw = ClientMode.text.rawValue
     @State private var requestBookmarkExport = false
     @State private var requestBookmarkImport = false
 
@@ -145,6 +150,20 @@ struct SettingsView: View {
                         }
                     }
                 Text("Periodically reconnects in the background to check for new items and hints. Apple controls how often this runs.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Client Mode") {
+                Picker("Connection type", selection: $clientModeRaw) {
+                    ForEach(ClientMode.allCases) { mode in
+                        Text(mode.label).tag(mode.rawValue)
+                    }
+                }
+                .onChange(of: clientModeRaw) { _, raw in
+                    let mode = ClientMode(rawValue: raw) ?? .text
+                    viewModel.setClientMode(mode)
+                }
+                Text("PopTracker mode uses Tracker AP tags, receives slot data, and can send location checks when a pack is loaded.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
