@@ -15,8 +15,10 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     let bookmarkStore: ConnectionBookmarkStore
     let inAppNotifications: InAppNotificationCenter
     let activityRouter: ActivityNotificationRouter
+    let packStore: PopTrackerPackStore
+    let trackerBridge: APTrackerBridge
 
-    init(bookmarkStore: ConnectionBookmarkStore = .shared) {
+    init(bookmarkStore: ConnectionBookmarkStore = .shared, packStore: PopTrackerPackStore = .shared) {
         let context = APContext()
         let inAppNotifications = InAppNotificationCenter()
         let activityRouter = ActivityNotificationRouter(inAppCenter: inAppNotifications)
@@ -25,11 +27,14 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         self.activityRouter = activityRouter
         self.commands = APClientCommands(context: context)
         self.bookmarkStore = bookmarkStore
+        self.packStore = packStore
         context.commandProcessor = self.commands
         context.delegate = self
         context.activityRouter = activityRouter
+        self.trackerBridge = APTrackerBridge(context: context, packStore: packStore)
         context.applyClientMode(Persistence.clientMode)
         context.trackerConnectGame = Persistence.trackerConnectGame
+        packStore.applyPackToContext(context)
         if Persistence.deathLinkEnabled, Persistence.clientMode == .text {
             context.tags.insert("DeathLink")
         }
@@ -39,9 +44,27 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     func setClientMode(_ mode: ClientMode) {
         Persistence.clientMode = mode
         context.applyClientMode(mode)
-        if Persistence.deathLinkEnabled {
+        if Persistence.deathLinkEnabled, mode == .text {
             context.tags.insert("DeathLink")
         }
+    }
+
+    func importPopTrackerPack(from url: URL) throws {
+        let install = try packStore.importPack(from: url)
+        try packStore.setActivePack(uid: install.packageUID)
+        packStore.applyPackToContext(context)
+        if Persistence.clientMode != .tracker {
+            setClientMode(.tracker)
+        }
+    }
+
+    func setActivePopTrackerPack(uid: String?) throws {
+        try packStore.setActivePack(uid: uid)
+        packStore.applyPackToContext(context)
+    }
+
+    func removePopTrackerPack(uid: String) throws {
+        try packStore.removePack(uid: uid)
     }
 
     func connect() {
@@ -264,14 +287,24 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     func contextDidConnect(_ context: APContext) {
         objectWillChange.send()
         BackgroundRefreshTask.schedule()
+        packStore.applyPackToContext(context)
+        packStore.validateGameMatch(sessionGame: context.activeGameName)
+        trackerBridge.handleConnect()
     }
 
     func contextDidReceiveSlotData(_ context: APContext, slotData: [String: Any]) {
         objectWillChange.send()
+        trackerBridge.handleSlotData(slotData)
     }
 
     func contextDidUpdateCheckedLocations(_ context: APContext, locationIDs: Set<Int>) {
         objectWillChange.send()
+        trackerBridge.handleCheckedLocations(locationIDs)
+    }
+
+    func contextDidReceiveItems(_ context: APContext, items: [NetworkItem]) {
+        objectWillChange.send()
+        trackerBridge.handleReceivedItems(items)
     }
 
     func submitPromptInput() {

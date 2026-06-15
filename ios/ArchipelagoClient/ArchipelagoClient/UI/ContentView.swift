@@ -111,6 +111,7 @@ struct SettingsView: View {
     @AppStorage(Persistence.clientModeKey) private var clientModeRaw = ClientMode.text.rawValue
     @State private var requestBookmarkExport = false
     @State private var requestBookmarkImport = false
+    @State private var requestPackImport = false
 
     var body: some View {
         Form {
@@ -167,6 +168,7 @@ struct SettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            TrackerPackPickerView(viewModel: viewModel, requestImport: $requestPackImport)
             Section("Connection Bookmarks") {
                 Toggle("Quick-access chips", isOn: $bookmarkChipsEnabled)
                 Button("Export Bookmarks") {
@@ -203,6 +205,7 @@ struct SettingsView: View {
             exportRequest: $requestBookmarkExport,
             importRequest: $requestBookmarkImport
         )
+        .popTrackerPackTransferHandlers(viewModel: viewModel, importRequest: $requestPackImport)
     }
 }
 

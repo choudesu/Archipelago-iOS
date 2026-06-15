@@ -11,6 +11,7 @@ protocol APContextDelegate: AnyObject {
     func contextDidConnect(_ context: APContext)
     func contextDidReceiveSlotData(_ context: APContext, slotData: [String: Any])
     func contextDidUpdateCheckedLocations(_ context: APContext, locationIDs: Set<Int>)
+    func contextDidReceiveItems(_ context: APContext, items: [NetworkItem])
 }
 
 @MainActor
@@ -331,7 +332,15 @@ final class APContext: ObservableObject {
     }
 
     func notifyNewItems(_ items: [NetworkItem], isBulkResync: Bool) {
-        guard !isBulkResync, let router = activityRouter else { return }
+        if !items.isEmpty {
+            delegate?.contextDidReceiveItems(self, items: items)
+        }
+        guard !isBulkResync, let router = activityRouter else {
+            if !isBulkResync {
+                persistActivitySnapshot()
+            }
+            return
+        }
         for item in items {
             let event = ActivityNotificationBuilder.itemEvent(
                 item: item,

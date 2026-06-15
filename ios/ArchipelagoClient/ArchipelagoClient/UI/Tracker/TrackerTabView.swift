@@ -2,17 +2,77 @@ import SwiftUI
 
 struct TrackerTabView: View {
     @ObservedObject var viewModel: AppViewModel
+    @State private var selectedSection = 0
 
     var body: some View {
+        Group {
+            if let pack = viewModel.packStore.loadedPack {
+                VStack(spacing: 0) {
+                    if let mismatch = viewModel.packStore.gameMismatchMessage {
+                        Text(mismatch)
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(8)
+                            .background(Color.orange)
+                    }
+
+                    Picker("View", selection: $selectedSection) {
+                        Text("Map").tag(0)
+                        Text("Items").tag(1)
+                        Text("Status").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding()
+
+                    switch selectedSection {
+                    case 0:
+                        TrackerMapView(
+                            pack: pack,
+                            trackerState: viewModel.trackerBridge.trackerState,
+                            checkedLocationIDs: viewModel.context.checkedLocations,
+                            onSectionTap: { sectionPath in
+                                Task {
+                                    await viewModel.trackerBridge.handleManualCheck(sectionPath: sectionPath)
+                                }
+                            }
+                        )
+                    case 1:
+                        TrackerItemsView(
+                            pack: pack,
+                            trackerState: viewModel.trackerBridge.trackerState
+                        )
+                    default:
+                        trackerStatusList(pack: pack)
+                    }
+                }
+            } else {
+                ContentUnavailableView(
+                    "No Pack Loaded",
+                    systemImage: "map",
+                    description: Text("Import a PopTracker pack in Settings to enable map and item tracking.")
+                )
+            }
+        }
+        .navigationTitle(viewModel.packStore.loadedPack?.manifest.name ?? "Tracker")
+    }
+
+    @ViewBuilder
+    private func trackerStatusList(pack: PopTrackerLoadedPack) -> some View {
         List {
+            Section("Pack") {
+                statusRow("Name", pack.manifest.name)
+                statusRow("Game", pack.gameName.isEmpty ? "—" : pack.gameName)
+                statusRow("Variant", pack.variantUID)
+                statusRow("Manual checks", pack.supportsManualChecks ? "enabled" : "disabled")
+            }
             Section("Connection") {
                 statusRow("Mode", Persistence.clientMode.label)
-                statusRow("Game", viewModel.context.activeGameName.isEmpty ? "—" : viewModel.context.activeGameName)
+                statusRow("Session game", viewModel.context.activeGameName.isEmpty ? "—" : viewModel.context.activeGameName)
                 statusRow("Checked", "\(viewModel.context.checkedLocations.count)")
                 statusRow("Missing", "\(viewModel.context.missingLocations.count)")
                 statusRow("Items received", "\(viewModel.context.itemsReceived.count)")
             }
-
             if !viewModel.context.slotData.isEmpty {
                 Section("Slot Data") {
                     ForEach(viewModel.context.slotData.keys.sorted(), id: \.self) { key in
@@ -26,14 +86,7 @@ struct TrackerTabView: View {
                     }
                 }
             }
-
-            Section {
-                Text("Import a PopTracker pack in Settings to enable map tracking. Tracker mode connects with PopTracker-compatible AP tags and receives slot data from the server.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
-        .navigationTitle("Tracker")
     }
 
     private func statusRow(_ label: String, _ value: String) -> some View {

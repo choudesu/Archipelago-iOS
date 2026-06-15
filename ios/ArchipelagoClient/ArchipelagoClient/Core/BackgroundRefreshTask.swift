@@ -204,4 +204,6 @@ private final class BackgroundConnectWaiter: APContextDelegate {
     func contextDidReceiveSlotData(_ context: APContext, slotData: [String: Any]) {}
 
     func contextDidUpdateCheckedLocations(_ context: APContext, locationIDs: Set<Int>) {}
+
+    func contextDidReceiveItems(_ context: APContext, items: [NetworkItem]) {}
 }

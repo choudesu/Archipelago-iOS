@@ -9,6 +9,8 @@ enum Persistence {
     static let connectionBookmarkChipsEnabledKey = "ap.client.connectionBookmarkChips.enabled"
     static let clientModeKey = "ap.client.mode"
     static let trackerConnectGameKey = "ap.client.trackerConnectGame"
+    static let activePopTrackerPackUIDKey = "ap.client.poptracker.activePackUID"
+    static let activePopTrackerVariantUIDKey = "ap.client.poptracker.activeVariantUID"
 
     private enum Keys {
         static let clientUUID = "ap.client.uuid"
@@ -21,6 +23,8 @@ enum Persistence {
         static let connectionBookmarkChipsEnabled = connectionBookmarkChipsEnabledKey
         static let clientMode = clientModeKey
         static let trackerConnectGame = trackerConnectGameKey
+        static let activePopTrackerPackUID = activePopTrackerPackUIDKey
+        static let activePopTrackerVariantUID = activePopTrackerVariantUIDKey
         static let lastActivitySnapshot = "ap.client.lastActivitySnapshot"
         static let backgroundSessionPassword = "ap.client.backgroundSession.password"
     }
@@ -88,6 +92,28 @@ enum Persistence {
     static var trackerConnectGame: String {
         get { defaults.string(forKey: Keys.trackerConnectGame) ?? "" }
         set { defaults.set(newValue, forKey: Keys.trackerConnectGame) }
+    }
+
+    static var activePopTrackerPackUID: String? {
+        get { defaults.string(forKey: Keys.activePopTrackerPackUID) }
+        set {
+            if let newValue, !newValue.isEmpty {
+                defaults.set(newValue, forKey: Keys.activePopTrackerPackUID)
+            } else {
+                defaults.removeObject(forKey: Keys.activePopTrackerPackUID)
+            }
+        }
+    }
+
+    static var activePopTrackerVariantUID: String? {
+        get { defaults.string(forKey: Keys.activePopTrackerVariantUID) }
+        set {
+            if let newValue, !newValue.isEmpty {
+                defaults.set(newValue, forKey: Keys.activePopTrackerVariantUID)
+            } else {
+                defaults.removeObject(forKey: Keys.activePopTrackerVariantUID)
+            }
+        }
     }
 
     static func pendingLocationChecksKey(slot: Int, team: Int) -> String {
