@@ -198,6 +198,13 @@ struct PopTrackerLoadedPack: Equatable {
     var gameName: String { manifest.gameName.trimmingCharacters(in: .whitespacesAndNewlines) }
     var supportsManualChecks: Bool { manifest.variants[variantUID]?.supportsManualChecks == true }
 
+    /// Maps that are referenced by at least one location's `map_locations` entry.
+    var displayableMaps: [PopTrackerMapDefinition] {
+        let referenced = PopTrackerPackLoader.referencedMapNames(from: locations)
+        guard !referenced.isEmpty else { return [] }
+        return maps.filter { referenced.contains($0.name) }
+    }
+
     func assetURL(for relativePath: String) -> URL {
         rootURL.appendingPathComponent(relativePath)
     }

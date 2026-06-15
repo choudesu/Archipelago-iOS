@@ -11,6 +11,10 @@ struct TrackerMapView: View {
 
     @State private var selectedMapName: String
 
+    private var displayableMaps: [PopTrackerMapDefinition] {
+        pack.displayableMaps
+    }
+
     init(
         pack: PopTrackerLoadedPack,
         trackerState: TrackerState,
@@ -21,14 +25,14 @@ struct TrackerMapView: View {
         self.trackerState = trackerState
         self.checkedLocationIDs = checkedLocationIDs
         self.onSectionTap = onSectionTap
-        _selectedMapName = State(initialValue: pack.maps.first?.name ?? "")
+        _selectedMapName = State(initialValue: pack.displayableMaps.first?.name ?? "")
     }
 
     var body: some View {
         VStack(spacing: 8) {
-            if pack.maps.count > 1 {
+            if displayableMaps.count > 1 {
                 Picker("Map", selection: $selectedMapName) {
-                    ForEach(pack.maps) { map in
+                    ForEach(displayableMaps) { map in
                         Text(map.name).tag(map.name)
                     }
                 }
@@ -36,7 +40,7 @@ struct TrackerMapView: View {
                 .padding(.horizontal)
             }
 
-            if let map = pack.maps.first(where: { $0.name == selectedMapName }) {
+            if let map = displayableMaps.first(where: { $0.name == selectedMapName }) {
                 ScrollView([.horizontal, .vertical]) {
                     ZStack(alignment: .topLeading) {
                         mapImage(for: map)
@@ -66,6 +70,14 @@ struct TrackerMapView: View {
                 }
             } else {
                 ContentUnavailableView("No Maps", systemImage: "map", description: Text("This pack does not define any maps."))
+            }
+        }
+        .onChange(of: pack.install.packageUID) { _, _ in
+            selectedMapName = displayableMaps.first?.name ?? ""
+        }
+        .onChange(of: displayableMaps.map(\.name)) { _, names in
+            if !names.contains(selectedMapName) {
+                selectedMapName = names.first ?? ""
             }
         }
     }

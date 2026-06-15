@@ -37,6 +37,7 @@ struct TrackerTabView: View {
                                 }
                             }
                         )
+                        .id(pack.install.packageUID)
                     case 1:
                         TrackerItemsView(
                             pack: pack,

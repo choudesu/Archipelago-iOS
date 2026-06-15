@@ -114,4 +114,110 @@ final class PopTrackerMappingLoaderTests: XCTestCase {
         )
         XCTAssertEqual(variant, "var_itemsonly")
     }
+
+    func testReferencedMapNamesCollectsFromNestedLocations() {
+        let nodes = [
+            PopTrackerLocationNode(
+                name: "Area",
+                children: nil,
+                sections: [PopTrackerLocationSection(name: "Chest", itemCount: 1)],
+                mapLocations: [
+                    PopTrackerMapLocation(map: "map1", x: 10, y: 20),
+                    PopTrackerMapLocation(map: "map2", x: 30, y: 40)
+                ]
+            ),
+            PopTrackerLocationNode(
+                name: "Other",
+                children: [
+                    PopTrackerLocationNode(
+                        name: "Child",
+                        children: nil,
+                        sections: [PopTrackerLocationSection(name: "Secret", itemCount: 1)],
+                        mapLocations: [PopTrackerMapLocation(map: "map3", x: 1, y: 2)]
+                    )
+                ],
+                sections: nil,
+                mapLocations: nil
+            )
+        ]
+        XCTAssertEqual(
+            PopTrackerPackLoader.referencedMapNames(from: nodes),
+            Set(["map1", "map2", "map3"])
+        )
+    }
+
+    func testDisplayableMapsFiltersUnreferencedPlaceholders() {
+        let pack = PopTrackerLoadedPack(
+            install: PopTrackerInstalledPack(
+                packageUID: "outer_wilds",
+                name: "Outer Wilds",
+                gameName: "Outer Wilds",
+                packageVersion: "1.0.0",
+                installedAt: Date(),
+                variants: ["standard"]
+            ),
+            rootURL: URL(fileURLWithPath: "/tmp"),
+            manifest: PopTrackerManifest(
+                name: "Outer Wilds",
+                gameName: "Outer Wilds",
+                packageUID: "outer_wilds",
+                packageVersion: "1.0.0",
+                minPoptrackerVersion: nil,
+                variants: ["standard": PopTrackerManifest.Variant(displayName: "Items", flags: ["ap"])]
+            ),
+            variantUID: "standard",
+            items: [],
+            locations: [],
+            maps: [
+                PopTrackerMapDefinition(name: "map1", img: "images/map1.png", locationSize: nil),
+                PopTrackerMapDefinition(name: "map2", img: "images/map2.png", locationSize: nil)
+            ],
+            itemMapping: [:],
+            locationMapping: [:],
+            sectionPaths: [],
+            sectionPathByAPLocationID: [:]
+        )
+        XCTAssertTrue(pack.displayableMaps.isEmpty)
+    }
+
+    func testDisplayableMapsKeepsReferencedMaps() {
+        let pack = PopTrackerLoadedPack(
+            install: PopTrackerInstalledPack(
+                packageUID: "celeste",
+                name: "Celeste",
+                gameName: "Celeste",
+                packageVersion: "3.0.0",
+                installedAt: Date(),
+                variants: ["standard"]
+            ),
+            rootURL: URL(fileURLWithPath: "/tmp"),
+            manifest: PopTrackerManifest(
+                name: "Celeste",
+                gameName: "Celeste",
+                packageUID: "celeste",
+                packageVersion: "3.0.0",
+                minPoptrackerVersion: nil,
+                variants: ["standard": PopTrackerManifest.Variant(displayName: "Map Tracker", flags: ["ap"])]
+            ),
+            variantUID: "standard",
+            items: [],
+            locations: [
+                PopTrackerLocationNode(
+                    name: "Prologue",
+                    children: nil,
+                    sections: [PopTrackerLocationSection(name: "Chest", itemCount: 1)],
+                    mapLocations: [PopTrackerMapLocation(map: "00_prologue", x: 1, y: 2)]
+                )
+            ],
+            maps: [
+                PopTrackerMapDefinition(name: "00_prologue", img: "images/00_prologue.png", locationSize: 16),
+                PopTrackerMapDefinition(name: "01_forsaken", img: "images/01_forsaken.png", locationSize: 16)
+            ],
+            itemMapping: [:],
+            locationMapping: [:],
+            sectionPaths: ["Prologue/Chest"],
+            sectionPathByAPLocationID: [:]
+        )
+        XCTAssertEqual(pack.displayableMaps.map(\.name), ["00_prologue"])
+    }
 }

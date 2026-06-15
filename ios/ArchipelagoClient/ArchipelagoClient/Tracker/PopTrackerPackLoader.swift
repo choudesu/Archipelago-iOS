@@ -101,6 +101,25 @@ enum PopTrackerPackLoader {
 
     private static func loadMaps(from roots: [URL]) throws -> [PopTrackerMapDefinition] {
         for root in roots {
+            let directory = root.appendingPathComponent("maps")
+            if let urls = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+                let jsonFiles = urls.filter {
+                    let ext = $0.pathExtension.lowercased()
+                    return ext == "json" || ext == "jsonc"
+                }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+                if !jsonFiles.isEmpty {
+                    var maps: [PopTrackerMapDefinition] = []
+                    var seenNames = Set<String>()
+                    for url in jsonFiles {
+                        for map in try JSONC.decode([PopTrackerMapDefinition].self, from: url) {
+                            if seenNames.insert(map.name).inserted {
+                                maps.append(map)
+                            }
+                        }
+                    }
+                    return maps
+                }
+            }
             for name in ["maps/maps.json", "maps/maps.jsonc"] {
                 let url = root.appendingPathComponent(name)
                 if FileManager.default.fileExists(atPath: url.path) {
@@ -109,6 +128,26 @@ enum PopTrackerPackLoader {
             }
         }
         return []
+    }
+
+    static func referencedMapNames(from nodes: [PopTrackerLocationNode]) -> Set<String> {
+        var names = Set<String>()
+        collectReferencedMapNames(nodes: nodes, into: &names)
+        return names
+    }
+
+    private static func collectReferencedMapNames(
+        nodes: [PopTrackerLocationNode],
+        into names: inout Set<String>
+    ) {
+        for node in nodes {
+            for mapLocation in node.mapLocations ?? [] {
+                names.insert(mapLocation.map)
+            }
+            if let children = node.children {
+                collectReferencedMapNames(nodes: children, into: &names)
+            }
+        }
     }
 
     static func buildSectionPaths(_ nodes: [PopTrackerLocationNode], parentPath: String = "") -> [String] {
