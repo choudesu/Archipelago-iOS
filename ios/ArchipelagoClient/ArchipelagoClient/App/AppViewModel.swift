@@ -28,10 +28,10 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         self.commands = APClientCommands(context: context)
         self.bookmarkStore = bookmarkStore
         self.packStore = packStore
+        self.trackerBridge = APTrackerBridge(context: context, packStore: packStore)
         context.commandProcessor = self.commands
         context.delegate = self
         context.activityRouter = activityRouter
-        self.trackerBridge = APTrackerBridge(context: context, packStore: packStore)
         context.applyClientMode(Persistence.clientMode)
         context.trackerConnectGame = Persistence.trackerConnectGame
         packStore.applyPackToContext(context)
