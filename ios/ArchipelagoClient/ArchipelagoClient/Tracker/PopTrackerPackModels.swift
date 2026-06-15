@@ -52,6 +52,32 @@ struct PopTrackerManifest: Codable, Equatable {
     }
 }
 
+enum PopTrackerVariantResolver {
+    static func resolveVariant(
+        requested: String?,
+        packUID: String,
+        persistedPackUID: String?,
+        persistedVariantUID: String?,
+        manifest: PopTrackerManifest
+    ) throws -> String {
+        if let requested {
+            guard manifest.variants[requested] != nil else {
+                throw PopTrackerPackError.unsupportedVariant(requested)
+            }
+            return requested
+        }
+        if persistedPackUID == packUID,
+           let persistedVariantUID,
+           manifest.variants[persistedVariantUID] != nil {
+            return persistedVariantUID
+        }
+        if let apVariant = manifest.variants.first(where: { $0.value.supportsArchipelago }) {
+            return apVariant.key
+        }
+        return manifest.variants.keys.sorted().first ?? "standard"
+    }
+}
+
 struct PopTrackerPackItem: Codable, Identifiable, Equatable {
     struct Stage: Codable, Equatable {
         let img: String?

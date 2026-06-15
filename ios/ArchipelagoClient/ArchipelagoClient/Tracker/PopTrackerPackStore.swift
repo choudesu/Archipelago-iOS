@@ -85,6 +85,7 @@ final class PopTrackerPackStore: ObservableObject {
         installedPacks.removeAll { $0.packageUID == uid }
         if Persistence.activePopTrackerPackUID == uid {
             Persistence.activePopTrackerPackUID = nil
+            Persistence.activePopTrackerVariantUID = nil
             loadedPack = nil
         }
         saveIndex()
@@ -103,12 +104,13 @@ final class PopTrackerPackStore: ObservableObject {
         let manifestURL = rootURL.appendingPathComponent("manifest.json")
         let manifestText = try String(contentsOf: manifestURL, encoding: .utf8)
         let manifest = try JSONC.decode(PopTrackerManifest.self, from: manifestText)
-        let resolvedVariant = variantUID
-            ?? Persistence.activePopTrackerVariantUID
-            ?? preferredVariant(from: manifest)
-        guard manifest.variants[resolvedVariant] != nil else {
-            throw PopTrackerPackError.unsupportedVariant(resolvedVariant)
-        }
+        let resolvedVariant = try PopTrackerVariantResolver.resolveVariant(
+            requested: variantUID,
+            packUID: uid,
+            persistedPackUID: Persistence.activePopTrackerPackUID,
+            persistedVariantUID: Persistence.activePopTrackerVariantUID,
+            manifest: manifest
+        )
         loadedPack = try PopTrackerPackLoader.loadInstalledPack(
             install: install,
             rootURL: rootURL,
@@ -124,7 +126,7 @@ final class PopTrackerPackStore: ObservableObject {
             loadedPack = nil
             return
         }
-        try? setActivePack(uid: uid, variantUID: Persistence.activePopTrackerVariantUID)
+        try? setActivePack(uid: uid)
     }
 
     func validateGameMatch(sessionGame: String) {
@@ -147,13 +149,6 @@ final class PopTrackerPackStore: ObservableObject {
             context.trackerConnectGame = game
             Persistence.trackerConnectGame = game
         }
-    }
-
-    private func preferredVariant(from manifest: PopTrackerManifest) -> String {
-        if let apVariant = manifest.variants.first(where: { $0.value.supportsArchipelago }) {
-            return apVariant.key
-        }
-        return manifest.variants.keys.sorted().first ?? "standard"
     }
 
     private func upsertInstalledPack(_ install: PopTrackerInstalledPack) {

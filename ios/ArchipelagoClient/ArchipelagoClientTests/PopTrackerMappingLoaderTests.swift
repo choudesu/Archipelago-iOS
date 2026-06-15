@@ -71,4 +71,47 @@ final class PopTrackerMappingLoaderTests: XCTestCase {
         ]
         XCTAssertEqual(PopTrackerPackLoader.buildSectionPaths(nodes), ["Parent/Child/Chest"])
     }
+
+    func testVariantResolverIgnoresPersistedVariantFromDifferentPack() throws {
+        let celesteManifest = PopTrackerManifest(
+            name: "Celeste",
+            gameName: "Celeste",
+            packageUID: "celeste",
+            packageVersion: "3.0.0",
+            minPoptrackerVersion: nil,
+            variants: [
+                "standard": PopTrackerManifest.Variant(displayName: "Map Tracker", flags: ["ap"])
+            ]
+        )
+        let variant = try PopTrackerVariantResolver.resolveVariant(
+            requested: nil,
+            packUID: "celeste",
+            persistedPackUID: "tunic_sapphiresapphic",
+            persistedVariantUID: "var_itemsonly",
+            manifest: celesteManifest
+        )
+        XCTAssertEqual(variant, "standard")
+    }
+
+    func testVariantResolverReusesPersistedVariantForSamePack() throws {
+        let tunicManifest = PopTrackerManifest(
+            name: "Tunic",
+            gameName: "Tunic",
+            packageUID: "tunic_sapphiresapphic",
+            packageVersion: "2.1.5",
+            minPoptrackerVersion: nil,
+            variants: [
+                "standard": PopTrackerManifest.Variant(displayName: "Map Tracker", flags: ["ap"]),
+                "var_itemsonly": PopTrackerManifest.Variant(displayName: "Item Tracker", flags: ["ap"])
+            ]
+        )
+        let variant = try PopTrackerVariantResolver.resolveVariant(
+            requested: nil,
+            packUID: "tunic_sapphiresapphic",
+            persistedPackUID: "tunic_sapphiresapphic",
+            persistedVariantUID: "var_itemsonly",
+            manifest: tunicManifest
+        )
+        XCTAssertEqual(variant, "var_itemsonly")
+    }
 }
