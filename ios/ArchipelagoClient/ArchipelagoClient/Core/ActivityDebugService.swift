@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 enum ActivityDebugService {
     struct Status: Equatable {
         var isAppActive: Bool
