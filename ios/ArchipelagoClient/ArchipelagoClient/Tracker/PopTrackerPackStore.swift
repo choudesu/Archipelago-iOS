@@ -46,7 +46,8 @@ final class PopTrackerPackStore: ObservableObject {
         guard fileManager.fileExists(atPath: manifestURL.path) else {
             throw PopTrackerPackError.missingManifest
         }
-        let manifest = try JSONC.decode(PopTrackerManifest.self, from: String(contentsOf: manifestURL, encoding: .utf8)!)
+        let manifestText = try String(contentsOf: manifestURL, encoding: .utf8)
+        let manifest = try JSONC.decode(PopTrackerManifest.self, from: manifestText)
 
         let uid = manifest.packageUID.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !uid.isEmpty else {
@@ -97,7 +98,8 @@ final class PopTrackerPackStore: ObservableObject {
         guard let install = installedPacks.first(where: { $0.packageUID == uid }) else { return }
         let rootURL = packsRootURL.appendingPathComponent(uid, isDirectory: true)
         let manifestURL = rootURL.appendingPathComponent("manifest.json")
-        let manifest = try JSONC.decode(PopTrackerManifest.self, from: String(contentsOf: manifestURL, encoding: .utf8)!)
+        let manifestText = try String(contentsOf: manifestURL, encoding: .utf8)
+        let manifest = try JSONC.decode(PopTrackerManifest.self, from: manifestText)
         let resolvedVariant = variantUID
             ?? Persistence.activePopTrackerVariantUID
             ?? preferredVariant(from: manifest)
