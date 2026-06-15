@@ -1,0 +1,65 @@
+import XCTest
+@testable import ArchipelagoClient
+
+final class APCodecTests: XCTestCase {
+    func testEncodeNetworkItem() throws {
+        let item = NetworkItem(item: 1, location: 2, player: 3, flags: 4)
+        let encoded = try APCodec.encode([["cmd": "Test", "item": item]])
+        XCTAssertTrue(encoded.contains("\"class\":\"NetworkItem\""))
+        XCTAssertTrue(encoded.contains("\"item\":1"))
+    }
+
+    func testDecodeNetworkItem() throws {
+        let json = """
+        [{"cmd":"ReceivedItems","index":0,"items":[{"class":"NetworkItem","item":10,"location":20,"player":1,"flags":0}]}]
+        """
+        let messages = try APCodec.decode(json)
+        XCTAssertEqual(messages.count, 1)
+        XCTAssertEqual(messages[0]["cmd"] as? String, "ReceivedItems")
+    }
+
+    func testDecodeVersionObject() throws {
+        let json = """
+        [{"cmd":"RoomInfo","version":{"class":"Version","major":0,"minor":6,"build":8}}]
+        """
+        let messages = try APCodec.decode(json)
+        let version = messages[0]["version"]
+        let parsed = APCodec.parseVersion(version as Any)
+        XCTAssertEqual(parsed, APVersion(major: 0, minor: 6, build: 8))
+    }
+
+    func testEncodeNullPasswordInConnect() throws {
+        let payload: [String: Any] = [
+            "cmd": "Connect",
+            "password": NSNull(),
+            "name": "Player1",
+            "game": ""
+        ]
+        let encoded = try APCodec.encode([payload])
+        XCTAssertTrue(encoded.contains("\"password\":null"))
+        XCTAssertTrue(encoded.contains("\"name\":\"Player1\""))
+    }
+
+    func testEncodeOptionalNilAsNull() throws {
+        let password: String? = nil
+        let payload: [String: Any] = [
+            "cmd": "Connect",
+            "password": password as Any
+        ]
+        let encoded = try APCodec.encode([payload])
+        XCTAssertTrue(encoded.contains("\"password\":null"))
+    }
+
+    func testEncodeConnectVersionAsVersionObject() throws {
+        let payload: [String: Any] = [
+            "cmd": "Connect",
+            "version": APVersion.clientVersion
+        ]
+        let encoded = try APCodec.encode([payload])
+        XCTAssertTrue(encoded.contains("\"class\":\"Version\""))
+        XCTAssertTrue(encoded.contains("\"major\":0"))
+        XCTAssertTrue(encoded.contains("\"minor\":6"))
+        XCTAssertTrue(encoded.contains("\"build\":8"))
+        XCTAssertFalse(encoded.contains("\"version\":[0,6,8]"))
+    }
+}
