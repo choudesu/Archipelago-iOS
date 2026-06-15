@@ -94,7 +94,7 @@ enum ZipExtractor {
         case 0:
             return Data(compressed)
         case 8:
-            return try inflate(Data(compressed), expectedSize: Int(entry.uncompressedSize))
+            return try decompressDeflate(Data(compressed), expectedSize: Int(entry.uncompressedSize))
         default:
             throw PopTrackerPackError.installFailed("Unsupported ZIP compression for \(entry.path).")
         }
