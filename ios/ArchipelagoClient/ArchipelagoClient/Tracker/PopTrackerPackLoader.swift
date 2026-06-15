@@ -49,6 +49,20 @@ enum PopTrackerPackLoader {
 
     private static func loadItems(from roots: [URL]) throws -> [PopTrackerPackItem] {
         for root in roots {
+            let directory = root.appendingPathComponent("items")
+            if let urls = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) {
+                let jsonFiles = urls.filter {
+                    let ext = $0.pathExtension.lowercased()
+                    return ext == "json" || ext == "jsonc"
+                }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+                if !jsonFiles.isEmpty {
+                    var items: [PopTrackerPackItem] = []
+                    for url in jsonFiles {
+                        items.append(contentsOf: try JSONC.decode([PopTrackerPackItem].self, from: url))
+                    }
+                    return items
+                }
+            }
             for name in ["items/items.json", "items/items.jsonc"] {
                 let url = root.appendingPathComponent(name)
                 if FileManager.default.fileExists(atPath: url.path) {

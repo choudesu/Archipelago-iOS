@@ -2,7 +2,7 @@ import Foundation
 
 enum JSONC {
     static func data(from text: String) throws -> Data {
-        let stripped = stripComments(text)
+        let stripped = stripComments(stripBOM(text))
         guard let data = stripped.data(using: .utf8) else {
             throw PopTrackerPackError.invalidJSON("Could not encode JSON text.")
         }
@@ -10,12 +10,21 @@ enum JSONC {
     }
 
     static func decode<T: Decodable>(_ type: T.Type, from text: String) throws -> T {
-        try JSONDecoder().decode(type, from: data(from: text))
+        do {
+            return try JSONDecoder().decode(type, from: data(from: text))
+        } catch {
+            throw PopTrackerPackError.invalidJSON(error.localizedDescription)
+        }
     }
 
     static func decode<T: Decodable>(_ type: T.Type, from url: URL) throws -> T {
         let text = try String(contentsOf: url, encoding: .utf8)
         return try decode(type, from: text)
+    }
+
+    private static func stripBOM(_ text: String) -> String {
+        guard text.first == "\u{FEFF}" else { return text }
+        return String(text.dropFirst())
     }
 
     private static func stripComments(_ text: String) -> String {

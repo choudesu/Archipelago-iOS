@@ -34,6 +34,13 @@ final class PopTrackerMappingLoaderTests: XCTestCase {
         XCTAssertEqual(mapping[4], ["toggle", "consumable"])
     }
 
+    func testJSONCStripsBOM() throws {
+        let json = "\u{FEFF}{ \"name\": \"Tunic\", \"game_name\": \"Tunic\", \"package_uid\": \"tunic\", \"package_version\": \"1\", \"variants\": {} }"
+        let manifest = try JSONC.decode(PopTrackerManifest.self, from: json)
+        XCTAssertEqual(manifest.name, "Tunic")
+        XCTAssertEqual(manifest.packageUID, "tunic")
+    }
+
     func testJSONCStripsLineComments() throws {
         let json = """
         [
