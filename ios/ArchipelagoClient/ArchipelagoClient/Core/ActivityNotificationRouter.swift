@@ -15,7 +15,7 @@ final class ActivityNotificationRouter {
         guard Persistence.activityAlertsEnabled else { return }
         guard !wasRecentlyDelivered(event.dedupKey) else { return }
 
-        if APNotificationService.shared.isAppActive {
+        if APNotificationService.shared.effectiveIsAppActive {
             inAppCenter.post(event)
         } else {
             Task {
@@ -34,6 +34,10 @@ final class ActivityNotificationRouter {
             await APNotificationService.shared.scheduleActivityNotification(event)
             markDelivered(event.dedupKey)
         }
+    }
+
+    func clearRecentDeliveries() {
+        recentlyDeliveredKeys = [:]
     }
 
     private func wasRecentlyDelivered(_ key: String) -> Bool {

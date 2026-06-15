@@ -6,6 +6,7 @@ enum Persistence {
     static let notificationsEnabledKey = "ap.client.notifications.enabled"
     static let activityAlertsEnabledKey = "ap.client.activityAlerts.enabled"
     static let backgroundSyncEnabledKey = "ap.client.backgroundSync.enabled"
+    static let debugModeEnabledKey = "ap.client.debugMode.enabled"
     static let connectionBookmarkChipsEnabledKey = "ap.client.connectionBookmarkChips.enabled"
 
     private enum Keys {
@@ -16,6 +17,7 @@ enum Persistence {
         static let notificationsEnabled = notificationsEnabledKey
         static let activityAlertsEnabled = activityAlertsEnabledKey
         static let backgroundSyncEnabled = backgroundSyncEnabledKey
+        static let debugModeEnabled = debugModeEnabledKey
         static let connectionBookmarkChipsEnabled = connectionBookmarkChipsEnabledKey
         static let lastActivitySnapshot = "ap.client.lastActivitySnapshot"
         static let backgroundSessionPassword = "ap.client.backgroundSession.password"
@@ -68,6 +70,11 @@ enum Persistence {
             return defaults.bool(forKey: Keys.backgroundSyncEnabled)
         }
         set { defaults.set(newValue, forKey: Keys.backgroundSyncEnabled) }
+    }
+
+    static var debugModeEnabled: Bool {
+        get { defaults.bool(forKey: Keys.debugModeEnabled) }
+        set { defaults.set(newValue, forKey: Keys.debugModeEnabled) }
     }
 
     static var backgroundSessionPassword: String? {

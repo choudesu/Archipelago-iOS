@@ -11,6 +11,11 @@ final class APNotificationService {
 
     private(set) var isAppActive = true
     private(set) var leftAppWhileJoined = false
+    private var simulatedInactiveDepth = 0
+
+    var effectiveIsAppActive: Bool {
+        simulatedInactiveDepth > 0 ? false : isAppActive
+    }
 
     private init() {
         NotificationCenter.default.addObserver(
@@ -153,5 +158,36 @@ final class APNotificationService {
                 NSLog("Failed to schedule activity notification: \(error.localizedDescription)")
             }
         }
+    }
+
+    func scheduleDebugDisconnectNotification() async {
+        guard Persistence.debugModeEnabled else { return }
+        guard await requestPermissionIfNeeded() else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Debug: Disconnected from Applepelago"
+        content.body = "Simulated disconnect notification from debug tools."
+        content.sound = .default
+
+        let trigger = UNTimeIntervalNotificationTrigger(
+            timeInterval: Self.minimumTriggerInterval,
+            repeats: false
+        )
+        let request = UNNotificationRequest(
+            identifier: "debug.\(Self.disconnectNotificationID)",
+            content: content,
+            trigger: trigger
+        )
+        UNUserNotificationCenter.current().add(request)
+    }
+
+    func withSimulatedAppInactive(_ work: () -> Void) {
+        guard Persistence.debugModeEnabled else {
+            work()
+            return
+        }
+        simulatedInactiveDepth += 1
+        defer { simulatedInactiveDepth -= 1 }
+        work()
     }
 }

@@ -177,6 +177,8 @@ struct SettingsView: View {
                 Text(viewModel.commands.helpText())
                     .font(.caption)
             }
+
+            DebugToolsView(viewModel: viewModel)
         }
         .scrollDismissesKeyboard(.interactively)
         .connectionBookmarkTransferHandlers(

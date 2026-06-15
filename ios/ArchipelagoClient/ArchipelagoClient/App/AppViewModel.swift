@@ -10,6 +10,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     @Published var showError = false
     @Published var commandHistory: [String] = []
     @Published var historyIndex = -1
+    @Published var debugLog: [String] = []
 
     let commands: APClientCommands
     let bookmarkStore: ConnectionBookmarkStore
@@ -254,6 +255,92 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     func contextDidConnect(_ context: APContext) {
         objectWillChange.send()
         BackgroundRefreshTask.schedule()
+        debugNote("Connected; background refresh scheduled")
+    }
+
+    // MARK: - Debug tools
+
+    func debugNote(_ message: String) {
+        guard Persistence.debugModeEnabled else { return }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        let line = "[\(formatter.string(from: Date()))] \(message)"
+        debugLog.insert(line, at: 0)
+        if debugLog.count > 30 {
+            debugLog.removeLast()
+        }
+    }
+
+    func debugClearLog() {
+        debugLog = []
+    }
+
+    func debugSimulateItemBanner() {
+        let event = ActivityDebugService.simulateItemAlert(context: context, router: activityRouter)
+        debugNote("Item banner: \(event.message)")
+    }
+
+    func debugSimulateHintBanner() {
+        let event = ActivityDebugService.simulateHintAlert(context: context, router: activityRouter)
+        debugNote("Hint banner: \(event.message)")
+    }
+
+    func debugClearRouterDedup() {
+        ActivityDebugService.clearRouterDedup(activityRouter)
+        debugNote("Cleared router dedup cache")
+    }
+
+    func debugSimulateBackgroundItemNotification() {
+        ActivityDebugService.simulateBackgroundIOSNotification(router: activityRouter, kind: .item)
+        debugNote("Scheduled simulated background item notification")
+    }
+
+    func debugSimulateBackgroundHintNotification() {
+        ActivityDebugService.simulateBackgroundIOSNotification(router: activityRouter, kind: .hint)
+        debugNote("Scheduled simulated background hint notification")
+    }
+
+    func debugSimulateDisconnectNotification() {
+        ActivityDebugService.simulateDisconnectNotification()
+        debugNote("Scheduled simulated disconnect notification")
+    }
+
+    func debugTriggerReceivedItemsPath() {
+        ActivityDebugService.simulateReceivedItemsPath(context: context)
+        debugNote("Triggered ReceivedItems path (item count: \(context.itemsReceived.count))")
+    }
+
+    func debugTriggerPrintJSONHintPath() {
+        ActivityDebugService.simulatePrintJSONHintPath(context: context)
+        debugNote("Triggered PrintJSON Hint path")
+    }
+
+    func debugTriggerRefreshHintsPath() {
+        ActivityDebugService.simulateRefreshHintsPath(context: context)
+        debugNote("Triggered refreshHints path (hint count: \(context.hints.count))")
+    }
+
+    func debugResetActivitySnapshot() {
+        ActivityDebugService.resetActivitySnapshot()
+        debugNote("Reset activity snapshot")
+    }
+
+    func debugRewindSnapshot() {
+        ActivityDebugService.rewindSnapshotForTesting(context: context)
+        debugNote("Rewound snapshot for diff testing")
+    }
+
+    func debugScheduleNearTermRefresh() {
+        let scheduled = ActivityDebugService.scheduleNearTermBackgroundRefresh()
+        debugNote(scheduled
+            ? "Scheduled near-term BG refresh (~5s)"
+            : "Failed to schedule BG refresh (check debug mode and BGTask registration)")
+    }
+
+    func debugRunBackgroundSyncNow() async {
+        debugNote("Running background sync now...")
+        let success = await BackgroundRefreshTask.runSyncNow()
+        debugNote(success ? "Background sync finished successfully" : "Background sync failed or skipped")
     }
 
     func submitPromptInput() {
