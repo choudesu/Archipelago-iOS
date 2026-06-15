@@ -13,14 +13,21 @@ final class AppViewModel: ObservableObject, APContextDelegate {
 
     let commands: APClientCommands
     let bookmarkStore: ConnectionBookmarkStore
+    let inAppNotifications: InAppNotificationCenter
+    let activityRouter: ActivityNotificationRouter
 
     init(bookmarkStore: ConnectionBookmarkStore = .shared) {
         let context = APContext()
+        let inAppNotifications = InAppNotificationCenter()
+        let activityRouter = ActivityNotificationRouter(inAppCenter: inAppNotifications)
         self.context = context
+        self.inAppNotifications = inAppNotifications
+        self.activityRouter = activityRouter
         self.commands = APClientCommands(context: context)
         self.bookmarkStore = bookmarkStore
         context.commandProcessor = self.commands
         context.delegate = self
+        context.activityRouter = activityRouter
         if Persistence.deathLinkEnabled {
             context.tags.insert("DeathLink")
         }
@@ -242,6 +249,11 @@ final class AppViewModel: ObservableObject, APContextDelegate {
 
     func contextDidUpdateProgress(_ context: APContext) {
         objectWillChange.send()
+    }
+
+    func contextDidConnect(_ context: APContext) {
+        objectWillChange.send()
+        BackgroundRefreshTask.schedule()
     }
 
     func submitPromptInput() {

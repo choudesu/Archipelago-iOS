@@ -222,8 +222,11 @@ final class APServerMessageHandler {
 
         context.markConnectSucceeded()
         context.connectionState = .connected
+        context.persistBackgroundSessionCredentials()
+        context.persistActivitySnapshot()
         context.delegate?.contextDidUpdateConnectionState(context)
         context.delegate?.contextDidUpdateProgress(context)
+        context.delegate?.contextDidConnect(context)
         context.appendLog("Joined slot \(context.slot ?? 0) on team \((context.team ?? 0) + 1) as \(context.auth ?? "player")")
         APNotificationService.shared.clearBackgroundDisconnectState()
     }
@@ -246,6 +249,7 @@ final class APServerMessageHandler {
 
         if startIndex == context.itemsReceived.count,
            let items = args["items"] as? [Any] {
+            let previousCount = context.itemsReceived.count
             for itemValue in items {
                 if let item = itemValue as? NetworkItem {
                     context.itemsReceived.append(item)
@@ -260,6 +264,9 @@ final class APServerMessageHandler {
             if let team = context.team, let slot = context.slot {
                 Persistence.saveReceivedItemsIndex(context.itemsReceived.count, slot: slot, team: team)
             }
+            let newItems = Array(context.itemsReceived.suffix(context.itemsReceived.count - previousCount))
+            let isBulkResync = startIndex == 0
+            context.notifyNewItems(newItems, isBulkResync: isBulkResync)
         }
     }
 

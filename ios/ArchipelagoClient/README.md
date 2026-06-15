@@ -36,7 +36,9 @@ After connecting, enter your slot name and password when prompted.
 - Hints tab with status updates and `!hint` item search
 - Data package download/cache for games in the session
 - Auto-reconnect with exponential backoff
-- Death Link toggle in Settings
+- Item & hint activity alerts (in-app banners + iOS local notifications when backgrounded)
+- Background sync via `BGAppRefreshTask` to periodically reconnect and check for new activity
+- Connection bookmarks with import/export
 
 ## Protocol Version
 

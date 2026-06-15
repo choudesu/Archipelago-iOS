@@ -6,6 +6,14 @@
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Applepelago</string>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>jp.chaoticly.ArchipelagoClient.refresh</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIconName</key>
