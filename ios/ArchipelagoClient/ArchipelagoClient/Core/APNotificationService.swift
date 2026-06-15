@@ -178,7 +178,11 @@ final class APNotificationService {
             content: content,
             trigger: trigger
         )
-        UNUserNotificationCenter.current().add(request)
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                NSLog("Failed to schedule debug disconnect notification: \(error.localizedDescription)")
+            }
+        }
     }
 
     func withSimulatedAppInactive(_ work: () -> Void) {
