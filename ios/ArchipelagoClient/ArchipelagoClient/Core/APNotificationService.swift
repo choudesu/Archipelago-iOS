@@ -43,32 +43,12 @@ final class APNotificationService {
         guard joined, connected, Persistence.notificationsEnabled else { return }
 
         leftAppWhileJoined = true
-        Task {
-            guard await requestPermissionIfNeeded() else { return }
-            scheduleDisconnectNotification()
-        }
     }
 
     func handleEnterForeground(stillConnected: Bool) {
         isAppActive = true
-
-        if stillConnected {
-            cancelPendingDisconnectNotification()
-            clearBackgroundDisconnectState()
-            return
-        }
-
-        guard leftAppWhileJoined,
-              Persistence.notificationsEnabled else {
-            clearBackgroundDisconnectState()
-            return
-        }
-
-        Task {
-            guard await requestPermissionIfNeeded() else { return }
-            scheduleDisconnectNotification()
-            clearBackgroundDisconnectState()
-        }
+        cancelPendingDisconnectNotification()
+        clearBackgroundDisconnectState()
     }
 
     func clearBackgroundDisconnectState() {
@@ -113,7 +93,7 @@ final class APNotificationService {
     private func scheduleDisconnectNotification() {
         let content = UNMutableNotificationContent()
         content.title = "Disconnected from Applepelago"
-        content.body = "The app was closed or backgrounded. Reopen to reconnect to the multiworld."
+        content.body = "Lost connection to the multiworld server. Reopen Applepelago to reconnect."
         content.sound = .default
 
         let trigger = UNTimeIntervalNotificationTrigger(
