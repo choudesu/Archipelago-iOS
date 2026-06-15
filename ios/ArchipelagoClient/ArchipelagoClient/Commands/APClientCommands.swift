@@ -2,13 +2,18 @@ import Foundation
 
 @MainActor
 final class APClientCommands {
-    private unowned let context: APContext
+    private weak var context: APContext?
 
     init(context: APContext) {
         self.context = context
     }
 
+    func bind(to context: APContext) {
+        self.context = context
+    }
+
     func process(_ raw: String) -> Bool {
+        guard let context else { return false }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
 
@@ -34,6 +39,7 @@ final class APClientCommands {
     }
 
     private func processClientCommand(_ raw: String) -> Bool {
+        guard let context else { return false }
         let parts = splitCommand(raw)
         guard let command = parts.first?.dropFirst().lowercased() else { return false }
         let args = parts.dropFirst()
@@ -122,6 +128,7 @@ final class APClientCommands {
     }
 
     private func outputDataPackagePart(name: String, values: [String]) -> Bool {
+        guard let context else { return false }
         guard !context.game.isEmpty else {
             output("No game set, cannot determine \(name).")
             return false
@@ -134,7 +141,7 @@ final class APClientCommands {
     }
 
     private func output(_ text: String) {
-        context.appendLog(text)
+        context?.appendLog(text)
     }
 
     private func splitCommand(_ raw: String) -> [String] {

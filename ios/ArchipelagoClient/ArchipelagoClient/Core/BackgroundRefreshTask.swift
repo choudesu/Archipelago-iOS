@@ -71,17 +71,28 @@ private final class BackgroundSyncRunner {
             return false
         }
 
-        let snapshot = Persistence.loadActivitySnapshot()
+        let sessions = Persistence.loadConnectionSessions()
+        let primaryID = Persistence.primaryConnectionSessionID
+            ?? Persistence.activeConnectionSessionID
+            ?? sessions.first?.id
+        guard let primaryID,
+              let primary = sessions.first(where: { $0.id == primaryID }) else {
+            return false
+        }
+
+        let snapshot = Persistence.loadActivitySnapshot(sessionID: primaryID)
         let inAppCenter = InAppNotificationCenter()
         let router = ActivityNotificationRouter(inAppCenter: inAppCenter)
         self.router = router
 
         let context = APContext(
-            serverAddress: Persistence.lastServerAddress,
+            sessionID: primary.id,
+            clientUUID: primary.clientUUID,
+            serverAddress: primary.serverAddress,
+            slotName: primary.slotName,
             password: Persistence.backgroundSessionPassword
         )
         context.activityRouter = router
-        context.setSlotName(Persistence.lastSlotName)
         self.context = context
 
         let connected = await waitForConnection(context: context, timeout: 20)

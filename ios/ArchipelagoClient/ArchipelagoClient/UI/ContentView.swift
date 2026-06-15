@@ -43,6 +43,7 @@ struct ContentView: View {
                         .tabItem { Label("Settings", systemImage: "gearshape") }
                         .tag(4)
                 }
+                .id(viewModel.activeSessionID)
                 .onChange(of: viewModel.selectedTab) { _, _ in
                     dismissKeyboard()
                 }

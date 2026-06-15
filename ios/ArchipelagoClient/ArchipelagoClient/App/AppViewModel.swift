@@ -2,7 +2,7 @@ import SwiftUI
 
 @MainActor
 final class AppViewModel: ObservableObject, APContextDelegate {
-    @Published var context: APContext
+    @Published private(set) var activeSessionID: UUID
     @Published var commandText = ""
     @Published var selectedTab = 0
     @Published var errorTitle: String?
@@ -11,6 +11,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     @Published var commandHistory: [String] = []
     @Published var historyIndex = -1
 
+    let sessionManager: ConnectionSessionManager
     let commands: APClientCommands
     let bookmarkStore: ConnectionBookmarkStore
     let inAppNotifications: InAppNotificationCenter
@@ -18,22 +19,22 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     let packStore: PopTrackerPackStore
     let trackerBridge: APTrackerBridge
 
+    var context: APContext { sessionManager.activeContext }
+
     init(bookmarkStore: ConnectionBookmarkStore = .shared, packStore: PopTrackerPackStore = .shared) {
-        let context = APContext()
+        let sessionManager = ConnectionSessionManager()
         let inAppNotifications = InAppNotificationCenter()
         let activityRouter = ActivityNotificationRouter(inAppCenter: inAppNotifications)
-        self.context = context
+        let context = sessionManager.activeContext
+        self.sessionManager = sessionManager
+        self.activeSessionID = sessionManager.activeSessionID
         self.inAppNotifications = inAppNotifications
         self.activityRouter = activityRouter
         self.commands = APClientCommands(context: context)
         self.bookmarkStore = bookmarkStore
         self.packStore = packStore
         self.trackerBridge = APTrackerBridge(context: context, packStore: packStore)
-        context.commandProcessor = self.commands
-        context.delegate = self
-        context.activityRouter = activityRouter
-        context.applyClientMode(Persistence.clientMode)
-        context.trackerConnectGame = Persistence.trackerConnectGame
+        wireAllSessions()
         packStore.applyPackToContext(context)
         if Persistence.deathLinkEnabled, Persistence.clientMode == .text {
             context.tags.insert("DeathLink")
@@ -41,12 +42,66 @@ final class AppViewModel: ObservableObject, APContextDelegate {
         context.appendLog("Applepelago ready. Enter a server address and tap Connect.")
     }
 
+    func selectSession(_ id: UUID) {
+        guard id != activeSessionID else { return }
+        sessionManager.setActiveSession(id: id)
+        activeSessionID = id
+        rebindActiveSession()
+        objectWillChange.send()
+    }
+
+    func addSession() {
+        let session = sessionManager.addSession()
+        wireContext(sessionManager.context(for: session.id))
+        selectSession(session.id)
+        objectWillChange.send()
+    }
+
+    func removeSession(_ id: UUID) {
+        sessionManager.removeSession(id: id)
+        activeSessionID = sessionManager.activeSessionID
+        rebindActiveSession()
+        objectWillChange.send()
+    }
+
+    func setPrimarySession(_ id: UUID) {
+        sessionManager.setPrimarySession(id: id)
+        objectWillChange.send()
+    }
+
+    private func wireAllSessions() {
+        for context in sessionManager.contexts.values {
+            wireContext(context)
+        }
+        rebindActiveSession()
+    }
+
+    private func wireContext(_ context: APContext?) {
+        guard let context else { return }
+        sessionManager.wireContext(
+            context,
+            delegate: self,
+            activityRouter: context.sessionID == activeSessionID ? activityRouter : nil,
+            commandProcessor: commands
+        )
+    }
+
+    private func rebindActiveSession() {
+        let context = sessionManager.activeContext
+        commands.bind(to: context)
+        trackerBridge.bind(to: context)
+        for sessionContext in sessionManager.contexts.values {
+            sessionContext.activityRouter = sessionContext.sessionID == activeSessionID ? activityRouter : nil
+        }
+        packStore.applyPackToContext(context)
+        packStore.validateGameMatch(sessionGame: context.activeGameName)
+        objectWillChange.send()
+    }
+
     func setClientMode(_ mode: ClientMode) {
         Persistence.clientMode = mode
-        context.applyClientMode(mode)
-        if Persistence.deathLinkEnabled, mode == .text {
-            context.tags.insert("DeathLink")
-        }
+        sessionManager.reloadContextConfiguration(mode: mode, trackerGame: Persistence.trackerConnectGame)
+        packStore.applyPackToContext(context)
     }
 
     func importPopTrackerPack(from url: URL) async {
@@ -89,11 +144,12 @@ final class AppViewModel: ObservableObject, APContextDelegate {
             context.displayAddress = address
         }
         context.serverAddress = address
-        context.connect()
+        sessionManager.syncSessionMetadata(from: context)
+        sessionManager.connect()
     }
 
     func disconnect() {
-        context.disconnect()
+        sessionManager.disconnect()
     }
 
     func currentServerAddress() -> String {
@@ -122,8 +178,6 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func loadBookmark(_ bookmark: ConnectionBookmark) {
-        guard canLoadBookmark else { return }
-
         var server = bookmark.serverAddress.trimmingCharacters(in: .whitespacesAndNewlines)
         var slot = bookmark.slotName.trimmingCharacters(in: .whitespacesAndNewlines)
         var password = bookmarkStore.password(for: bookmark.id)
@@ -146,6 +200,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
             context.setSlotName(slot)
         }
         context.password = password
+        sessionManager.syncSessionMetadata(from: context)
         selectedTab = 0
     }
 
@@ -271,6 +326,7 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     // MARK: - APContextDelegate
 
     func contextDidUpdateConnectionState(_ context: APContext) {
+        sessionManager.syncSessionMetadata(from: context)
         objectWillChange.send()
     }
 
@@ -285,7 +341,8 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func contextNeedsUserInput(_ context: APContext, prompt: String) async -> String {
-        ""
+        guard context.sessionID == activeSessionID else { return "" }
+        return ""
     }
 
     func contextDidUpdateHints(_ context: APContext) {
@@ -297,24 +354,33 @@ final class AppViewModel: ObservableObject, APContextDelegate {
     }
 
     func contextDidConnect(_ context: APContext) {
+        sessionManager.syncSessionMetadata(from: context)
+        if context.sessionID == sessionManager.primarySessionID {
+            sessionManager.syncPrimaryBackgroundCredentials(from: context)
+        }
         objectWillChange.send()
-        BackgroundRefreshTask.schedule()
-        packStore.applyPackToContext(context)
-        packStore.validateGameMatch(sessionGame: context.activeGameName)
-        trackerBridge.handleConnect()
+        if context.sessionID == activeSessionID {
+            BackgroundRefreshTask.schedule()
+            packStore.applyPackToContext(context)
+            packStore.validateGameMatch(sessionGame: context.activeGameName)
+            trackerBridge.handleConnect()
+        }
     }
 
     func contextDidReceiveSlotData(_ context: APContext, slotData: [String: Any]) {
+        guard context.sessionID == activeSessionID else { return }
         objectWillChange.send()
         trackerBridge.handleSlotData(slotData)
     }
 
     func contextDidUpdateCheckedLocations(_ context: APContext, locationIDs: Set<Int>) {
+        guard context.sessionID == activeSessionID else { return }
         objectWillChange.send()
         trackerBridge.handleCheckedLocations(locationIDs)
     }
 
     func contextDidReceiveItems(_ context: APContext, items: [NetworkItem]) {
+        guard context.sessionID == activeSessionID else { return }
         objectWillChange.send()
         trackerBridge.handleReceivedItems(items)
     }

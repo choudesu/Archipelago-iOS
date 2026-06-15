@@ -18,6 +18,10 @@ protocol APContextDelegate: AnyObject {
 final class APContext: ObservableObject {
     weak var delegate: APContextDelegate?
 
+    let sessionID: UUID
+    var clientUUID: String
+    var onMetadataChanged: (() -> Void)?
+
     // Connection
     @Published var connectionState: ConnectionState = .disconnected
     @Published var serverAddress: String
@@ -94,7 +98,7 @@ final class APContext: ObservableObject {
     var commandProcessor: APClientCommands?
 
     var isConnected: Bool { connectionState == .connected && webSocket?.isOpen == true }
-    var suggestedAddress: String { serverAddress.isEmpty ? Persistence.lastServerAddress : serverAddress }
+    var suggestedAddress: String { serverAddress }
 
     var totalLocations: Int? {
         if checkedLocations.isEmpty && missingLocations.isEmpty { return nil }
@@ -106,21 +110,37 @@ final class APContext: ObservableObject {
         return Double(checkedLocations.count) / Double(total)
     }
 
-    init(serverAddress: String = "", password: String? = nil) {
+    init(
+        sessionID: UUID = UUID(),
+        clientUUID: String = UUID().uuidString,
+        serverAddress: String = "",
+        slotName: String = "",
+        password: String? = nil
+    ) {
+        self.sessionID = sessionID
+        self.clientUUID = clientUUID
         self.serverAddress = serverAddress
         self.password = password
         self.messageHandler = APServerMessageHandler(context: self)
-        let savedSlot = Persistence.lastSlotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        displayAddress = serverAddress
+        let savedSlot = slotName.trimmingCharacters(in: .whitespacesAndNewlines)
         if !savedSlot.isEmpty {
             auth = savedSlot
             username = savedSlot
         }
-        if self.serverAddress.isEmpty, !Persistence.lastServerAddress.isEmpty {
-            self.serverAddress = Persistence.lastServerAddress
-            displayAddress = Persistence.lastServerAddress
-        }
         applyClientMode(Persistence.clientMode)
         trackerConnectGame = Persistence.trackerConnectGame
+    }
+
+    /// Ephemeral context for background sync using legacy global credentials.
+    convenience init(legacyEphemeralServerAddress serverAddress: String, password: String?) {
+        self.init(
+            sessionID: UUID(),
+            clientUUID: Persistence.clientUUID,
+            serverAddress: serverAddress,
+            slotName: Persistence.lastSlotName,
+            password: password
+        )
     }
 
     func applyClientMode(_ mode: ClientMode) {
@@ -183,12 +203,11 @@ final class APContext: ObservableObject {
         if trimmed.isEmpty {
             auth = nil
             username = nil
-            Persistence.lastSlotName = ""
         } else {
             auth = trimmed
             username = trimmed
-            Persistence.lastSlotName = trimmed
         }
+        onMetadataChanged?()
     }
 
     var slotName: String {
@@ -359,7 +378,7 @@ final class APContext: ObservableObject {
             seenHintKeys: Array(seenHintKeys).sorted(),
             updatedAt: Date()
         )
-        Persistence.saveActivitySnapshot(snapshot)
+        Persistence.saveActivitySnapshot(snapshot, sessionID: sessionID)
     }
 
     func persistBackgroundSessionCredentials() {
@@ -640,7 +659,7 @@ final class APContext: ObservableObject {
         }
         auth = name
         username = name
-        Persistence.lastSlotName = name
+        onMetadataChanged?()
         await sendConnect()
     }
 
@@ -665,7 +684,7 @@ final class APContext: ObservableObject {
             "version": connectVersion,
             "tags": Array(tags).sorted(),
             "items_handling": itemsHandling,
-            "uuid": Persistence.clientUUID,
+            "uuid": clientUUID,
             "game": clientMode == .tracker ? trackerConnectGame : "",
             "slot_data": wantSlotData
         ]

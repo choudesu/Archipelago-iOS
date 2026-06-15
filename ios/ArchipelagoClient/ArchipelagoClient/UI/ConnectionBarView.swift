@@ -6,6 +6,8 @@ struct ConnectionBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            ConnectionSessionPickerView(viewModel: viewModel)
+
             HStack(spacing: 8) {
                 TextField("host:38281", text: Binding(
                     get: {
@@ -13,7 +15,10 @@ struct ConnectionBarView: View {
                             ? viewModel.context.suggestedAddress
                             : viewModel.context.displayAddress
                     },
-                    set: { viewModel.context.displayAddress = $0 }
+                    set: {
+                        viewModel.context.displayAddress = $0
+                        viewModel.context.serverAddress = $0
+                    }
                 ))
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()

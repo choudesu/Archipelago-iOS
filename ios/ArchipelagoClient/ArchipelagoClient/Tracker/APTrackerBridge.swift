@@ -11,6 +11,10 @@ final class APTrackerBridge {
         self.packStore = packStore
     }
 
+    func bind(to context: APContext) {
+        self.context = context
+    }
+
     func handleConnect() {
         guard let pack = packStore.loadedPack, let context else { return }
         trackerState.reset(for: pack)

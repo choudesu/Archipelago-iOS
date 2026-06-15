@@ -11,6 +11,9 @@ enum Persistence {
     static let trackerConnectGameKey = "ap.client.trackerConnectGame"
     static let activePopTrackerPackUIDKey = "ap.client.poptracker.activePackUID"
     static let activePopTrackerVariantUIDKey = "ap.client.poptracker.activeVariantUID"
+    static let connectionSessionsKey = "ap.client.connectionSessions"
+    static let activeConnectionSessionIDKey = "ap.client.activeConnectionSessionID"
+    static let primaryConnectionSessionIDKey = "ap.client.primaryConnectionSessionID"
 
     private enum Keys {
         static let clientUUID = "ap.client.uuid"
@@ -25,6 +28,9 @@ enum Persistence {
         static let trackerConnectGame = trackerConnectGameKey
         static let activePopTrackerPackUID = activePopTrackerPackUIDKey
         static let activePopTrackerVariantUID = activePopTrackerVariantUIDKey
+        static let connectionSessions = connectionSessionsKey
+        static let activeConnectionSessionID = activeConnectionSessionIDKey
+        static let primaryConnectionSessionID = primaryConnectionSessionIDKey
         static let lastActivitySnapshot = "ap.client.lastActivitySnapshot"
         static let backgroundSessionPassword = "ap.client.backgroundSession.password"
     }
@@ -187,5 +193,63 @@ enum Persistence {
     static var hasBackgroundSessionCredentials: Bool {
         !lastServerAddress.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !lastSlotName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    static func loadConnectionSessions() -> [ConnectionSession] {
+        guard let data = defaults.data(forKey: Keys.connectionSessions),
+              let sessions = try? JSONDecoder().decode([ConnectionSession].self, from: data) else {
+            return []
+        }
+        return sessions
+    }
+
+    static func saveConnectionSessions(_ sessions: [ConnectionSession]) {
+        guard let data = try? JSONEncoder().encode(sessions) else { return }
+        defaults.set(data, forKey: Keys.connectionSessions)
+    }
+
+    static var activeConnectionSessionID: UUID? {
+        get {
+            guard let raw = defaults.string(forKey: Keys.activeConnectionSessionID) else { return nil }
+            return UUID(uuidString: raw)
+        }
+        set {
+            if let newValue {
+                defaults.set(newValue.uuidString, forKey: Keys.activeConnectionSessionID)
+            } else {
+                defaults.removeObject(forKey: Keys.activeConnectionSessionID)
+            }
+        }
+    }
+
+    static var primaryConnectionSessionID: UUID? {
+        get {
+            guard let raw = defaults.string(forKey: Keys.primaryConnectionSessionID) else { return nil }
+            return UUID(uuidString: raw)
+        }
+        set {
+            if let newValue {
+                defaults.set(newValue.uuidString, forKey: Keys.primaryConnectionSessionID)
+            } else {
+                defaults.removeObject(forKey: Keys.primaryConnectionSessionID)
+            }
+        }
+    }
+
+    static func activitySnapshotKey(sessionID: UUID) -> String {
+        "ap.client.activitySnapshot.\(sessionID.uuidString)"
+    }
+
+    static func loadActivitySnapshot(sessionID: UUID) -> ActivitySnapshot {
+        guard let data = defaults.data(forKey: activitySnapshotKey(sessionID: sessionID)),
+              let snapshot = try? JSONDecoder().decode(ActivitySnapshot.self, from: data) else {
+            return .empty
+        }
+        return snapshot
+    }
+
+    static func saveActivitySnapshot(_ snapshot: ActivitySnapshot, sessionID: UUID) {
+        guard let data = try? JSONEncoder().encode(snapshot) else { return }
+        defaults.set(data, forKey: activitySnapshotKey(sessionID: sessionID))
     }
 }
